@@ -1,6 +1,7 @@
-# Cloudflare Pages · 请在 Dashboard 绑定本仓库
-# Build command: 留空或下面这条
-# Output directory: dist
+# Cloudflare Workers · 静态网站（新后台没有单独的 Pages，用 Workers 即可）
 name = "xinbao-shubao"
 compatibility_date = "2026-07-11"
-pages_build_output_dir = "dist"
+
+[assets]
+directory = "./dist"
+not_found_handling = "single-page-application"
