@@ -1,0 +1,6 @@
+# Cloudflare Pages · 请在 Dashboard 绑定本仓库
+# Build command: 留空或下面这条
+# Output directory: dist
+name = "xinbao-shubao"
+compatibility_date = "2026-07-11"
+pages_build_output_dir = "dist"
