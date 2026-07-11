@@ -5,6 +5,7 @@
 document.addEventListener("DOMContentLoaded", function () {
   var START_DATE = "2025-12-04";
   var STORAGE_KEY = "xinbao-shubao-journal-v1";
+  var SEED_VERSION_KEY = "xinbao-shubao-seed-v";
 
   var defaultData = {
     anniversaries: [
@@ -93,6 +94,24 @@ document.addEventListener("DOMContentLoaded", function () {
         order: typeof item.order === "number" ? item.order : index
       };
     });
+  }
+
+  function applyPublishedSeedIfNeeded() {
+    var seed = window.XINBAO_SEED;
+    if (!seed || !seed.data) return;
+    var ver = String(seed.version || "");
+    if (!ver) return;
+    var applied = "";
+    try {
+      applied = localStorage.getItem(SEED_VERSION_KEY) || "";
+    } catch (err) {}
+    if (applied === ver) return;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(seed.data));
+      localStorage.setItem(SEED_VERSION_KEY, ver);
+    } catch (err) {
+      console.warn("发布快照写入失败", err);
+    }
   }
 
   function loadData() {
@@ -1808,6 +1827,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (appStarted) return;
     if (document.body.classList.contains("is-locked")) return;
     appStarted = true;
+    applyPublishedSeedIfNeeded();
     data = loadData();
     reindexOrders(data.anniversaries);
     saveData();
