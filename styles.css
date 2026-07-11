@@ -10,8 +10,8 @@
   --line: rgba(217, 123, 146, 0.28);
   --panel: rgba(255, 252, 253, 0.9);
   --card: #fffcfd;
-  --font-display: "Cormorant Garamond", "Songti SC", "STSong", serif;
-  --font-body: "Noto Sans SC", "PingFang SC", sans-serif;
+  --font-display: "Songti SC", "STSong", "PingFang SC", Georgia, serif;
+  --font-body: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }

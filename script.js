@@ -1726,13 +1726,25 @@ document.addEventListener("DOMContentLoaded", function () {
     if (appStarted) return;
     if (document.body.classList.contains("is-locked")) return;
     appStarted = true;
-    applyPublishedSeedIfNeeded();
-    data = loadData();
-    reindexOrders(data.anniversaries);
-    saveData();
-    updateDaysTogether();
-    fillDefaultDates();
-    renderAll();
+    try {
+      applyPublishedSeedIfNeeded();
+      data = loadData();
+      reindexOrders(data.anniversaries);
+      try {
+        saveData();
+      } catch (err) {
+        console.warn("保存失败（可能是手机存储空间不足）", err);
+      }
+      updateDaysTogether();
+      fillDefaultDates();
+      renderAll();
+    } catch (err) {
+      console.warn("启动失败", err);
+      try {
+        data = JSON.parse(JSON.stringify(defaultData));
+        renderAll();
+      } catch (err2) {}
+    }
     if (!location.hash || location.hash === "#") {
       location.replace("#home");
     }
