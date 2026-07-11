@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>馨宝与树宝</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=subcopy" />
+</head>
+<body class="is-locked" data-view="home">
+  <!-- ========== 暗号门：打开网站前先输入密码 ========== -->
+  <div id="gate" class="gate" role="dialog" aria-labelledby="gate-title" aria-modal="true">
+    <div class="gate-card">
+      <p class="gate-kicker">PRIVATE JOURNAL</p>
+      <h1 id="gate-title" class="gate-title">馨宝与树宝</h1>
+      <p class="gate-hint">输入暗号后进入</p>
+      <form id="gate-form" class="gate-form" autocomplete="off">
+        <label class="gate-label" for="gate-password">暗号</label>
+        <input
+          id="gate-password"
+          class="gate-input"
+          type="password"
+          name="password"
+          required
+          autofocus
+          placeholder="请输入暗号"
+        />
+        <p id="gate-error" class="gate-error" hidden>暗号不对，再试一次</p>
+        <button type="button" id="gate-btn" class="btn gate-btn">进入</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========== 首页：五个正方形入口 ========== -->
+  <div id="view-home" class="view view-home is-active">
+    <header class="home-hero">
+      <p class="hero-kicker">OUR PRIVATE JOURNAL</p>
+      <h1 class="hero-title">馨宝与树宝</h1>
+      <p class="hero-sub">从 2025.12.4 开始的故事</p>
+      <p class="hero-days">在一起第 <span id="days-together">0</span> 天</p>
+      <p class="privacy-note">私密本机站 · 点板块进入独立页面</p>
+    </header>
+
+    <section class="home-reminders" aria-label="纪念日提醒">
+      <div class="reminders-head">
+        <p class="reminders-kicker">REMINDERS</p>
+        <h2 class="reminders-title">纪念日提醒</h2>
+      </div>
+      <ul class="reminder-list" id="list-reminders"></ul>
+    </section>
+
+    <nav class="tile-grid" aria-label="功能入口">
+      <a class="tile" href="#anniversaries">
+        <span class="tile-num">01</span>
+        <span class="tile-name">纪念日</span>
+      </a>
+      <a class="tile" href="#events">
+        <span class="tile-num">02</span>
+        <span class="tile-name">重要的事</span>
+      </a>
+      <a class="tile" href="#sweets">
+        <span class="tile-num">03</span>
+        <span class="tile-name">想对你说</span>
+      </a>
+      <a class="tile" href="#places">
+        <span class="tile-num">04</span>
+        <span class="tile-name">足迹</span>
+      </a>
+      <a class="tile" href="#fights">
+        <span class="tile-num">05</span>
+        <span class="tile-name">和解</span>
+      </a>
+    </nav>
+  </div>
+
+  <!-- ========== 子页：纪念日 ========== -->
+  <div id="view-anniversaries" class="view view-page" hidden>
+    <div class="page-bar">
+      <a class="btn-back" href="#home">← 返回首页</a>
+      <h2 class="page-title">纪念日</h2>
+    </div>
+    <p class="page-desc">一年又一年，仍想和你一起记得</p>
+
+    <div class="anni-toolbar" role="group" aria-label="纪念日排序方式">
+      <span class="sort-hint">排序</span>
+      <div class="sort-chips">
+        <button type="button" class="sort-chip is-active" data-sort="manual">手动</button>
+        <button type="button" class="sort-chip" data-sort="date-desc">新→旧</button>
+        <button type="button" class="sort-chip" data-sort="date-asc">旧→新</button>
+        <button type="button" class="sort-chip" data-sort="days-desc">天数</button>
+      </div>
+    </div>
+
+    <div class="filter-bar" data-type="anniversaries">
+      <input type="search" class="filter-search" id="filter-q-anniversaries" placeholder="搜索标题、备注…" autocomplete="off" />
+    </div>
+
+    <ul class="entry-list" id="list-anniversaries"></ul>
+
+    <!-- 右下角添加按钮 -->
+    <button type="button" class="fab" id="btn-anni-add" aria-label="添加纪念日">+</button>
+
+    <!-- 添加纪念日弹窗 -->
+    <div class="modal" id="modal-anni" hidden>
+      <div class="modal-backdrop" data-close-anni-modal></div>
+      <div class="modal-panel" role="dialog" aria-labelledby="modal-anni-title">
+        <h3 id="modal-anni-title">添加纪念日</h3>
+        <form class="entry-form entry-form--modal" id="form-anniversary" data-type="anniversaries">
+          <label class="full">标题<input name="title" type="text" required placeholder="例如：搬进小家 / 馨宝生日" /></label>
+          <label class="full">日期<input name="date" type="date" required /></label>
+          <label class="full">备注<input name="note" type="text" placeholder="可选" /></label>
+          <p class="form-hint">保存后只是一条记录。若要生日、周年出现在首页提醒，请在列表里点「加入提醒」。</p>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-ghost" data-close-anni-modal>取消</button>
+            <button type="submit" class="btn">保存</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 子页：重要的事（原大事记） ========== -->
+  <div id="view-events" class="view view-page" hidden>
+    <div class="page-bar">
+      <a class="btn-back" href="#home">← 返回首页</a>
+      <h2 class="page-title">重要的事</h2>
+    </div>
+    <p class="page-desc">那些改变我们节奏与心态的事</p>
+    <div class="filter-bar" data-type="events">
+      <input type="search" class="filter-search" id="filter-q-events" placeholder="搜索标题、详情…" autocomplete="off" />
+      <div class="author-chips" role="group" aria-label="按来自谁筛选">
+        <button type="button" class="author-chip is-active" data-author="">全部</button>
+        <button type="button" class="author-chip" data-author="馨宝">馨宝</button>
+        <button type="button" class="author-chip" data-author="树宝">树宝</button>
+        <button type="button" class="author-chip" data-author="我们">我们</button>
+      </div>
+    </div>
+    <ul class="entry-list" id="list-events"></ul>
+
+    <button type="button" class="fab" id="btn-event-add" aria-label="添加重要的事">+</button>
+
+    <div class="modal" id="modal-event" hidden>
+      <div class="modal-backdrop" data-close-event-modal></div>
+      <div class="modal-panel" role="dialog" aria-labelledby="modal-event-title">
+        <h3 id="modal-event-title">记下重要的事</h3>
+        <form class="entry-form entry-form--modal" id="form-event" data-type="events">
+          <label class="full">来自谁
+            <select name="author" required>
+              <option value="馨宝">馨宝</option>
+              <option value="树宝">树宝</option>
+              <option value="我们">我们</option>
+            </select>
+          </label>
+          <label class="full">标题<input name="title" type="text" required placeholder="发生了什么重要的事" /></label>
+          <div class="date-range-row">
+            <label>开始日期<input name="dateStart" type="date" required /></label>
+            <label>结束日期<input name="dateEnd" type="date" required /></label>
+          </div>
+          <p class="form-hint">同一天 = 单日；不同日期 = 持续一段时间</p>
+          <label class="full">详情<textarea name="note" rows="3" placeholder="多写一点也没关系"></textarea></label>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-ghost" data-close-event-modal>取消</button>
+            <button type="submit" class="btn">保存</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 子页：想对你说（原甜蜜想法） ========== -->
+  <div id="view-sweets" class="view view-page" hidden>
+    <div class="page-bar">
+      <a class="btn-back" href="#home">← 返回首页</a>
+      <h2 class="page-title">想对你说</h2>
+    </div>
+    <p class="page-desc">那些未说出口的话，先放在这里</p>
+    <div class="filter-bar" data-type="sweets">
+      <input type="search" class="filter-search" id="filter-q-sweets" placeholder="搜索想说的话…" autocomplete="off" />
+      <div class="author-chips" role="group" aria-label="按来自谁筛选">
+        <button type="button" class="author-chip is-active" data-author="">全部</button>
+        <button type="button" class="author-chip" data-author="馨宝">馨宝</button>
+        <button type="button" class="author-chip" data-author="树宝">树宝</button>
+        <button type="button" class="author-chip" data-author="我们">我们</button>
+      </div>
+    </div>
+    <ul class="entry-list" id="list-sweets"></ul>
+
+    <button type="button" class="fab" id="btn-sweet-add" aria-label="写下想说的话">+</button>
+
+    <div class="modal" id="modal-sweet" hidden>
+      <div class="modal-backdrop" data-close-sweet-modal></div>
+      <div class="modal-panel" role="dialog" aria-labelledby="modal-sweet-title">
+        <h3 id="modal-sweet-title">想对你说</h3>
+        <form class="entry-form entry-form--modal" id="form-sweet" data-type="sweets">
+          <label class="full">谁写的
+            <select name="author" required>
+              <option value="馨宝">馨宝</option>
+              <option value="树宝">树宝</option>
+              <option value="我们">我们</option>
+            </select>
+          </label>
+          <label class="full">日期<input name="date" type="date" required /></label>
+          <label class="full">内容<textarea name="note" rows="3" required placeholder="想说的话写在这里…"></textarea></label>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-ghost" data-close-sweet-modal>取消</button>
+            <button type="submit" class="btn">保存</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 子页：足迹 ========== -->
+  <div id="view-places" class="view view-page" hidden>
+    <div class="page-bar">
+      <a class="btn-back" href="#home">← 返回首页</a>
+      <h2 class="page-title">足迹</h2>
+    </div>
+    <p class="page-desc">我们一起走过的路</p>
+
+    <div class="filter-bar" data-type="places">
+      <input type="search" class="filter-search" id="filter-q-places" placeholder="搜索地点、一句话…" autocomplete="off" />
+    </div>
+
+    <ul class="entry-list" id="list-places"></ul>
+
+    <button type="button" class="fab" id="btn-place-add" aria-label="添加足迹">+</button>
+
+    <div class="modal" id="modal-place" hidden>
+      <div class="modal-backdrop" data-close-place-modal></div>
+      <div class="modal-panel modal-panel--wide" role="dialog" aria-labelledby="modal-place-title">
+        <h3 id="modal-place-title">添加足迹</h3>
+        <form class="entry-form entry-form--modal" id="form-place" data-type="places">
+          <label class="full">地点<input name="title" type="text" required placeholder="城市 / 店名 / 景点" /></label>
+          <label>开始日期<input name="dateStart" type="date" required /></label>
+          <label>结束日期<input name="dateEnd" type="date" required /></label>
+          <label class="full">总花销（元）<input name="cost" type="number" min="0" step="0.01" placeholder="例如：1280" /></label>
+          <label class="full">一句话<textarea name="note" rows="2" placeholder="这次旅程最记得什么？"></textarea></label>
+          <div class="full photo-field">
+            <p class="photo-field-label">照片（最多 5 张）</p>
+            <input
+              id="place-photos-input"
+              class="visually-hidden-file"
+              name="photos"
+              type="file"
+              accept="image/*"
+              multiple
+              tabindex="-1"
+            />
+            <div id="place-photo-preview" class="photo-preview" aria-live="polite"></div>
+            <p class="form-hint">点虚线「+」添加照片；照片会完整显示在足迹里。</p>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-ghost" data-close-place-modal>取消</button>
+            <button type="submit" class="btn" id="btn-place-save">保存</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 子页：和解（原吵架记录） ========== -->
+  <div id="view-fights" class="view view-page" hidden>
+    <div class="page-bar">
+      <a class="btn-back" href="#home">← 返回首页</a>
+      <h2 class="page-title">和解</h2>
+    </div>
+    <p class="page-desc">雨停之后，把靠近的方式写下来</p>
+    <div class="filter-bar" data-type="fights">
+      <input type="search" class="filter-search" id="filter-q-fights" placeholder="搜索主题、经过、反思…" autocomplete="off" />
+      <div class="author-chips" role="group" aria-label="按来自谁筛选">
+        <button type="button" class="author-chip is-active" data-author="">全部</button>
+        <button type="button" class="author-chip" data-author="馨宝">馨宝</button>
+        <button type="button" class="author-chip" data-author="树宝">树宝</button>
+        <button type="button" class="author-chip" data-author="我们">我们</button>
+      </div>
+    </div>
+    <ul class="entry-list" id="list-fights"></ul>
+
+    <button type="button" class="fab" id="btn-fight-add" aria-label="添加和解记录">+</button>
+
+    <div class="modal" id="modal-fight" hidden>
+      <div class="modal-backdrop" data-close-fight-modal></div>
+      <div class="modal-panel modal-panel--wide" role="dialog" aria-labelledby="modal-fight-title">
+        <h3 id="modal-fight-title">记一次和解</h3>
+        <form class="entry-form entry-form--modal" id="form-fight" data-type="fights">
+          <label class="full">来自谁
+            <select name="author" required>
+              <option value="馨宝">馨宝</option>
+              <option value="树宝">树宝</option>
+              <option value="我们">我们</option>
+            </select>
+          </label>
+          <label class="full">日期<input name="date" type="date" required /></label>
+          <label class="full">主题<input name="title" type="text" required placeholder="关于什么" /></label>
+          <label class="full">经过<textarea name="note" rows="3" placeholder="当时发生了什么（可选）"></textarea></label>
+          <label class="full">怎么和好的<textarea name="resolve" rows="2" placeholder="后来怎么解开的？"></textarea></label>
+          <label class="full">感受与反思<textarea name="reflection" rows="3" placeholder="当时的感受、事后想到了什么…"></textarea></label>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-ghost" data-close-fight-modal>取消</button>
+            <button type="submit" class="btn">保存</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- 照片大图预览（可左右切换） -->
+  <div class="lightbox" id="lightbox" hidden>
+    <button type="button" class="lightbox-close" id="lightbox-close" aria-label="关闭">×</button>
+    <button type="button" class="lightbox-nav lightbox-prev" id="lightbox-prev" aria-label="上一张">‹</button>
+    <img id="lightbox-img" alt="足迹照片预览" />
+    <button type="button" class="lightbox-nav lightbox-next" id="lightbox-next" aria-label="下一张">›</button>
+    <p class="lightbox-counter" id="lightbox-counter" hidden></p>
+  </div>
+
+  <!-- 轻提示：保存成功等 -->
+  <div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
+
+  <!-- 暗号门单独写在这里，避免被后面脚本影响 -->
+  <script>
+    (function () {
+      var PASSWORD = "20251204";
+      var KEY = "xinbao-shubao-gate-ok";
+
+      function unlock() {
+        try {
+          sessionStorage.setItem(KEY, "1");
+        } catch (err) {}
+        document.body.classList.remove("is-locked");
+        var gate = document.getElementById("gate");
+        if (gate) {
+          gate.hidden = true;
+          gate.style.display = "none";
+        }
+        document.dispatchEvent(new Event("site-unlocked"));
+      }
+
+      try {
+        if (sessionStorage.getItem(KEY) === "1") unlock();
+      } catch (err) {}
+
+      var form = document.getElementById("gate-form");
+      var input = document.getElementById("gate-password");
+      var error = document.getElementById("gate-error");
+      var btn = document.getElementById("gate-btn");
+
+      function checkPassword() {
+        var typed = ((input && input.value) || "").trim();
+        if (typed === PASSWORD) {
+          if (error) error.hidden = true;
+          unlock();
+        } else {
+          if (error) error.hidden = false;
+          if (input) {
+            input.value = "";
+            input.focus();
+          }
+        }
+      }
+
+      if (form) {
+        form.addEventListener("submit", function (e) {
+          e.preventDefault();
+          checkPassword();
+        });
+      }
+      if (btn) {
+        btn.addEventListener("click", function (e) {
+          e.preventDefault();
+          checkPassword();
+        });
+      }
+      if (input) {
+        input.addEventListener("keydown", function (e) {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            checkPassword();
+          }
+        });
+      }
+    })();
+  </script>
+  <script src="script.js?v=rename2"></script>
+</body>
+</html>
