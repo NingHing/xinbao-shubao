@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=subcopy" />
+  <link rel="stylesheet" href="styles.css?v=remind-ongoing" />
 </head>
 <body class="is-locked" data-view="home">
   <!-- ========== 暗号门：打开网站前先输入密码 ========== -->
@@ -156,9 +156,13 @@
           <label class="full">标题<input name="title" type="text" required placeholder="发生了什么重要的事" /></label>
           <div class="date-range-row">
             <label>开始日期<input name="dateStart" type="date" required /></label>
-            <label>结束日期<input name="dateEnd" type="date" required /></label>
+            <label id="event-end-label">结束日期<input name="dateEnd" type="date" id="event-date-end" /></label>
           </div>
-          <p class="form-hint">同一天 = 单日；不同日期 = 持续一段时间</p>
+          <label class="full check-row">
+            <input name="ongoing" type="checkbox" id="event-ongoing" />
+            <span>持续至今（还在进行，没有结束日）</span>
+          </label>
+          <p class="form-hint">同一天 = 单日；不同日期 = 一段时间；勾选「持续至今」则显示到「现在」</p>
           <label class="full">详情<textarea name="note" rows="3" placeholder="多写一点也没关系"></textarea></label>
           <div class="modal-actions">
             <button type="button" class="btn btn-ghost" data-close-event-modal>取消</button>
@@ -383,6 +387,6 @@
       }
     })();
   </script>
-  <script src="script.js?v=rename2"></script>
+  <script src="script.js?v=remind-ongoing"></script>
 </body>
 </html>

@@ -107,14 +107,16 @@ document.addEventListener("DOMContentLoaded", function () {
       // 大事记：兼容旧的单日期字段，支持开始～结束
       parsed.events = (parsed.events || []).map(function (item) {
         var start = item.dateStart || item.date || "";
-        var end = item.dateEnd || item.date || start;
+        var ongoing = item.ongoing === true;
+        var end = ongoing ? "" : item.dateEnd || item.date || start;
         return {
           id: item.id || uid(),
           title: item.title || "",
           author: item.author || "",
           dateStart: start,
-          dateEnd: end || start,
+          dateEnd: end,
           date: start,
+          ongoing: ongoing,
           note: item.note || ""
         };
       });
@@ -249,7 +251,8 @@ document.addEventListener("DOMContentLoaded", function () {
   function remindCountdownLabel(days) {
     if (days === 0) return "就是今天";
     if (days === 1) return "明天";
-    return "还有 " + days + " 天";
+    // 按「每年一次」计算，距离下一次纪念日
+    return "一年还有 " + days + " 天";
   }
 
   function getUpcomingReminders() {
@@ -298,7 +301,7 @@ document.addEventListener("DOMContentLoaded", function () {
           escapeText(row.title || "纪念日") +
           "</p>" +
           '<p class="reminder-date">' +
-          escapeText(formatMonthDay(row.next)) +
+          escapeText("下次：" + formatMonthDay(row.next)) +
           "</p>" +
           "</div>" +
           '<p class="reminder-countdown">' +
@@ -357,10 +360,11 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  function formatDateRange(start, end) {
+  function formatDateRange(start, end, ongoing) {
     var s = start || "";
-    var e = end || s;
     if (!s) return "";
+    if (ongoing) return s + " ～ 现在";
+    var e = end || s;
     if (!e || e === s) return s;
     return s + " ～ " + e;
   }
@@ -446,7 +450,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
     listEl.innerHTML = items
       .map(function (item) {
-        var range = formatDateRange(item.dateStart || item.date, item.dateEnd);
+        var range = formatDateRange(
+          item.dateStart || item.date,
+          item.dateEnd,
+          item.ongoing === true
+        );
         var meta = item.author
           ? '<p class="entry-meta">来自 ' + escapeText(item.author) + "</p>"
           : "";
@@ -556,7 +564,10 @@ document.addEventListener("DOMContentLoaded", function () {
             escapeText(
               daysLeft === 0
                 ? "今天就是这一天"
-                : "下次提醒：" + formatMonthDay(next) + " · " + remindCountdownLabel(daysLeft)
+                : "下次：" +
+                  formatMonthDay(next) +
+                  " · " +
+                  remindCountdownLabel(daysLeft)
             ) +
             "</p>"
           : "";
@@ -895,6 +906,15 @@ document.addEventListener("DOMContentLoaded", function () {
   var sweetModal = document.getElementById("modal-sweet");
   var fightModal = document.getElementById("modal-fight");
 
+  function syncEventOngoingUI() {
+    var form = document.getElementById("form-event");
+    if (!form || !form.ongoing || !form.dateEnd) return;
+    var ongoing = !!form.ongoing.checked;
+    form.dateEnd.disabled = ongoing;
+    form.dateEnd.required = !ongoing;
+    if (ongoing) form.dateEnd.value = "";
+  }
+
   function openEventModal(item) {
     editingId = item ? item.id : null;
     setModalTitle("modal-event-title", item ? "编辑重要的事" : "记下重要的事");
@@ -904,14 +924,21 @@ document.addEventListener("DOMContentLoaded", function () {
       form.author.value = item.author || "我们";
       form.title.value = item.title || "";
       form.dateStart.value = item.dateStart || item.date || "";
-      form.dateEnd.value = item.dateEnd || item.dateStart || item.date || "";
+      form.ongoing.checked = item.ongoing === true;
+      if (item.ongoing === true) {
+        form.dateEnd.value = "";
+      } else {
+        form.dateEnd.value = item.dateEnd || item.dateStart || item.date || "";
+      }
       form.note.value = item.note || "";
     } else {
       var today = todayStr();
       form.author.value = "我们";
       form.dateStart.value = today;
       form.dateEnd.value = today;
+      form.ongoing.checked = false;
     }
+    syncEventOngoingUI();
     eventModal.hidden = false;
     form.title.focus();
   }
@@ -976,6 +1003,10 @@ document.addEventListener("DOMContentLoaded", function () {
   document.getElementById("btn-event-add").addEventListener("click", function () {
     openEventModal(null);
   });
+  var eventOngoingInput = document.getElementById("event-ongoing");
+  if (eventOngoingInput) {
+    eventOngoingInput.addEventListener("change", syncEventOngoingUI);
+  }
   document.getElementById("btn-sweet-add").addEventListener("click", function () {
     openSweetModal(null);
   });
@@ -1312,21 +1343,23 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
       }
 
-      // 大事记：支持单日或起止日期
+      // 重要的事：支持单日、区间，或持续至今
       if (type === "events") {
         var eventStart = (fd.get("dateStart") || "").toString();
-        var eventEnd = (fd.get("dateEnd") || "").toString();
-        if (eventStart && eventEnd && eventEnd < eventStart) {
+        var eventOngoing = !!(form.ongoing && form.ongoing.checked);
+        var eventEnd = eventOngoing ? "" : (fd.get("dateEnd") || "").toString();
+        if (!eventOngoing && eventStart && eventEnd && eventEnd < eventStart) {
           alert("结束日期不能早于开始日期。");
           return;
         }
-        if (!eventEnd) eventEnd = eventStart;
+        if (!eventOngoing && !eventEnd) eventEnd = eventStart;
         var eventFields = {
           title: (fd.get("title") || "").toString().trim(),
           author: (fd.get("author") || "").toString(),
           dateStart: eventStart,
           dateEnd: eventEnd,
           date: eventStart,
+          ongoing: eventOngoing,
           note: (fd.get("note") || "").toString().trim()
         };
         if (isEdit) {
@@ -1337,6 +1370,7 @@ document.addEventListener("DOMContentLoaded", function () {
           oldEvent.dateStart = eventFields.dateStart;
           oldEvent.dateEnd = eventFields.dateEnd;
           oldEvent.date = eventFields.date;
+          oldEvent.ongoing = eventFields.ongoing;
           oldEvent.note = eventFields.note;
         } else {
           eventFields.id = uid();
