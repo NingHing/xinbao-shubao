@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=backup-move" />
+  <link rel="stylesheet" href="styles.css?v=heic-fix" />
 </head>
 <body class="is-locked" data-view="home">
   <!-- ========== 暗号门：打开网站前先输入密码 ========== -->
@@ -267,7 +267,7 @@
               tabindex="-1"
             />
             <div id="place-photo-preview" class="photo-preview" aria-live="polite"></div>
-            <p class="form-hint">点虚线「+」添加照片；照片会完整显示在足迹里。</p>
+            <p class="form-hint">点虚线「+」添加。支持 JPG / PNG；苹果 HEIC 也会尽量自动转换。</p>
           </div>
           <div class="modal-actions">
             <button type="button" class="btn btn-ghost" data-close-place-modal>取消</button>
@@ -400,6 +400,6 @@
       }
     })();
   </script>
-  <script src="script.js?v=backup-move"></script>
+  <script src="script.js?v=heic-fix"></script>
 </body>
 </html>

@@ -1133,30 +1133,140 @@ document.addEventListener("DOMContentLoaded", function () {
     placePhotoPreview.innerHTML = html;
   }
 
-  function compressImageFile(file) {
+  function isHeicFile(file) {
+    var type = String((file && file.type) || "").toLowerCase();
+    var name = String((file && file.name) || "").toLowerCase();
+    return (
+      type.indexOf("heic") !== -1 ||
+      type.indexOf("heif") !== -1 ||
+      /\.heic$|\.heif$/.test(name)
+    );
+  }
+
+  function loadHeic2Any() {
+    if (window.heic2any) return Promise.resolve(window.heic2any);
+    return new Promise(function (resolve, reject) {
+      var existing = document.querySelector('script[data-heic2any="1"]');
+      if (existing) {
+        existing.addEventListener("load", function () {
+          if (window.heic2any) resolve(window.heic2any);
+          else reject(new Error("HEIC转换库加载失败"));
+        });
+        existing.addEventListener("error", function () {
+          reject(new Error("HEIC转换库加载失败"));
+        });
+        return;
+      }
+      var script = document.createElement("script");
+      script.src = "https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js";
+      script.async = true;
+      script.setAttribute("data-heic2any", "1");
+      script.onload = function () {
+        if (window.heic2any) resolve(window.heic2any);
+        else reject(new Error("HEIC转换库加载失败"));
+      };
+      script.onerror = function () {
+        reject(new Error("HEIC转换库加载失败"));
+      };
+      document.head.appendChild(script);
+    });
+  }
+
+  function drawImageToJpeg(img) {
+    var maxSide = 1280;
+    var w = img.naturalWidth || img.width;
+    var h = img.naturalHeight || img.height;
+    if (!w || !h) throw new Error("图片尺寸无效");
+    if (w > maxSide || h > maxSide) {
+      if (w >= h) {
+        h = Math.round((h * maxSide) / w);
+        w = maxSide;
+      } else {
+        w = Math.round((w * maxSide) / h);
+        h = maxSide;
+      }
+    }
+    var canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    var ctx = canvas.getContext("2d");
+    ctx.drawImage(img, 0, 0, w, h);
+    var dataUrl = canvas.toDataURL("image/jpeg", 0.72);
+    canvas.width = 0;
+    canvas.height = 0;
+    if (!dataUrl || dataUrl === "data:,") throw new Error("图片压缩失败");
+    return dataUrl;
+  }
+
+  function loadImageFromBlob(blob) {
+    return new Promise(function (resolve, reject) {
+      if (typeof createImageBitmap === "function") {
+        createImageBitmap(blob)
+          .then(resolve)
+          .catch(function () {
+            // 旧浏览器或不支持时，退回 Image + ObjectURL
+            loadImageFromObjectUrl(blob).then(resolve, reject);
+          });
+        return;
+      }
+      loadImageFromObjectUrl(blob).then(resolve, reject);
+    });
+  }
+
+  function loadImageFromObjectUrl(blob) {
     return new Promise(function (resolve, reject) {
       var img = new Image();
-      var url = URL.createObjectURL(file);
+      var url = URL.createObjectURL(blob);
       img.onload = function () {
-        var maxW = 1200;
-        var w = img.width;
-        var h = img.height;
-        if (w > maxW) {
-          h = Math.round((h * maxW) / w);
-          w = maxW;
-        }
-        var canvas = document.createElement("canvas");
-        canvas.width = w;
-        canvas.height = h;
-        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
         URL.revokeObjectURL(url);
-        resolve(canvas.toDataURL("image/jpeg", 0.72));
+        resolve(img);
       };
       img.onerror = function () {
         URL.revokeObjectURL(url);
-        reject(new Error("图片读取失败"));
+        // 再试 FileReader（部分环境 ObjectURL 会失败）
+        var reader = new FileReader();
+        reader.onload = function () {
+          var img2 = new Image();
+          img2.onload = function () {
+            resolve(img2);
+          };
+          img2.onerror = function () {
+            reject(new Error("图片读取失败"));
+          };
+          img2.src = String(reader.result || "");
+        };
+        reader.onerror = function () {
+          reject(new Error("图片读取失败"));
+        };
+        reader.readAsDataURL(blob);
       };
       img.src = url;
+    });
+  }
+
+  function compressImageFile(file) {
+    function fromBlob(blob) {
+      return loadImageFromBlob(blob).then(function (img) {
+        return drawImageToJpeg(img);
+      });
+    }
+
+    function viaHeic() {
+      return loadHeic2Any().then(function (heic2any) {
+        return heic2any({
+          blob: file,
+          toType: "image/jpeg",
+          quality: 0.82
+        }).then(function (result) {
+          return Array.isArray(result) ? result[0] : result;
+        });
+      }).then(fromBlob);
+    }
+
+    // 先按普通图片处理；失败再尝试 HEIC 转换（苹果相册很常见）
+    if (isHeicFile(file)) return viaHeic();
+    return fromBlob(file).catch(function () {
+      return viaHeic();
     });
   }
 
@@ -1351,13 +1461,47 @@ document.addEventListener("DOMContentLoaded", function () {
       alert("最多 " + MAX_PLACE_PHOTOS + " 张，已为你保留前 " + room + " 张。");
     }
 
-    Promise.all(selected.map(compressImageFile))
-      .then(function (imgs) {
-        pendingPlacePhotos = pendingPlacePhotos.concat(imgs);
-        renderPlacePreview();
-      })
-      .catch(function () {
-        alert("有些照片无法读取，请换几张再试。");
+    showToast("正在处理照片…");
+    var ok = [];
+    var fail = 0;
+    var heicFail = 0;
+
+    selected
+      .reduce(function (chain, file) {
+        return chain.then(function () {
+          return compressImageFile(file)
+            .then(function (src) {
+              ok.push(src);
+            })
+            .catch(function (err) {
+              fail += 1;
+              if (isHeicFile(file) || (err && String(err.message || "").indexOf("HEIC") !== -1)) {
+                heicFail += 1;
+              }
+            });
+        });
+      }, Promise.resolve())
+      .then(function () {
+        if (ok.length) {
+          pendingPlacePhotos = pendingPlacePhotos.concat(ok);
+          renderPlacePreview();
+          showToast("已添加 " + ok.length + " 张");
+        }
+        if (fail) {
+          if (heicFail && !ok.length) {
+            alert(
+              "这些照片是苹果相册的 HEIC 格式，当前浏览器转换失败。\n\n可以：\n1）用 Safari 打开本站再试\n2）先把照片存成 JPG / 截图后再上传"
+            );
+          } else {
+            alert(
+              "有 " +
+                fail +
+                " 张照片无法读取（常见于 HEIC 或过大的原图）。已保留成功的 " +
+                ok.length +
+                " 张。"
+            );
+          }
+        }
       });
   });
 
