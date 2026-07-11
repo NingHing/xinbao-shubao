@@ -172,6 +172,86 @@ document.addEventListener("DOMContentLoaded", function () {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   }
 
+  function countEntries(payload) {
+    var n = 0;
+    Object.keys(defaultData).forEach(function (key) {
+      if (Array.isArray(payload[key])) n += payload[key].length;
+    });
+    return n;
+  }
+
+  function isBackupPayload(payload) {
+    if (!payload || typeof payload !== "object") return false;
+    return Object.keys(defaultData).some(function (key) {
+      return Array.isArray(payload[key]);
+    });
+  }
+
+  function exportBackup() {
+    if (!data) data = loadData();
+    var payload = {
+      app: "xinbao-shubao",
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      data: data
+    };
+    var blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: "application/json"
+    });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    var stamp = todayStr().replace(/-/g, "");
+    a.href = url;
+    a.download = "馨宝与树宝-备份-" + stamp + ".json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () {
+      URL.revokeObjectURL(url);
+    }, 1000);
+    showToast("已导出备份");
+  }
+
+  function applyImportedData(rawPayload) {
+    var incoming = rawPayload && rawPayload.data ? rawPayload.data : rawPayload;
+    if (!isBackupPayload(incoming)) {
+      alert("这个文件不像是本站的备份，请重新导出后再试。");
+      return;
+    }
+    // 走一遍 loadData 同款规范化：先写入再读回
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(incoming));
+    data = loadData();
+    reindexOrders(data.anniversaries);
+    saveData();
+    renderAll();
+    updateDaysTogether();
+    showToast("已导入 " + countEntries(data) + " 条");
+  }
+
+  function importBackupFile(file) {
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        var parsed = JSON.parse(String(reader.result || ""));
+        var preview = parsed && parsed.data ? parsed.data : parsed;
+        var n = isBackupPayload(preview) ? countEntries(preview) : 0;
+        var msg =
+          "导入会覆盖当前浏览器里已有的日记内容。\n\n" +
+          (n ? "备份里大约有 " + n + " 条记录。\n" : "") +
+          "确定继续吗？";
+        if (!confirm(msg)) return;
+        applyImportedData(parsed);
+      } catch (err) {
+        alert("读取失败，请确认选的是导出的 .json 备份文件。");
+      }
+    };
+    reader.onerror = function () {
+      alert("读取文件失败，请再试一次。");
+    };
+    reader.readAsText(file, "utf-8");
+  }
+
   function showToast(message) {
     var el = document.getElementById("toast");
     if (!el) return;
@@ -1556,6 +1636,27 @@ document.addEventListener("DOMContentLoaded", function () {
     var type = bar && bar.getAttribute("data-type");
     if (type) renderList(type);
   });
+
+  // ----- 备份导出 / 导入 -----
+  var btnExport = document.getElementById("btn-export-backup");
+  var btnImport = document.getElementById("btn-import-backup");
+  var inputImport = document.getElementById("input-import-backup");
+
+  if (btnExport) {
+    btnExport.addEventListener("click", function () {
+      exportBackup();
+    });
+  }
+  if (btnImport && inputImport) {
+    btnImport.addEventListener("click", function () {
+      inputImport.value = "";
+      inputImport.click();
+    });
+    inputImport.addEventListener("change", function () {
+      var file = inputImport.files && inputImport.files[0];
+      importBackupFile(file);
+    });
+  }
 
   // ----- 启动（等暗号门打开后再加载）-----
   var appStarted = false;

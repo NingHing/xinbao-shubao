@@ -279,6 +279,54 @@ body.is-locked .gate {
   line-height: 1.55;
 }
 
+.home-backup {
+  width: 100%;
+  margin: 1.2rem 0 0.4rem;
+  padding: 0.95rem 1rem 1rem;
+  background: rgba(255, 252, 253, 0.62);
+  border: 1px solid rgba(217, 123, 146, 0.18);
+  border-radius: 16px;
+  animation: rise 0.8s ease 0.12s both;
+}
+
+.backup-head {
+  text-align: center;
+  margin-bottom: 0.75rem;
+}
+
+.backup-kicker {
+  font-size: 0.65rem;
+  letter-spacing: 0.28em;
+  color: var(--gold);
+}
+
+.backup-title {
+  margin-top: 0.2rem;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--rose-deep);
+}
+
+.backup-desc {
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.backup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.55rem;
+}
+
+.backup-actions .btn {
+  min-width: 7.5rem;
+}
+
 .date-range-row {
   grid-column: 1 / -1;
   display: grid;
