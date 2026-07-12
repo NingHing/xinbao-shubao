@@ -7,8 +7,8 @@
 # 参考图 / 私密素材，不要上传
 assets/
 
-# Supabase 本地密钥
-config.js
+# 注意：config.js 里只有 publishable/anon 公钥（本就可放进网页）
+# 千万不要把 service_role / secret 写进去
 
 .DS_Store
 dist/
