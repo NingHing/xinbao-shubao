@@ -7,5 +7,8 @@
 # 参考图 / 私密素材，不要上传
 assets/
 
+# Supabase 本地密钥
+config.js
+
 .DS_Store
 dist/

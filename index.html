@@ -4,29 +4,50 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>馨宝与树宝</title>
-  <link rel="stylesheet" href="styles.css?v=mobile-fix" />
+  <link rel="stylesheet" href="styles.css?v=cloud-pair" />
 </head>
 <body class="is-locked" data-view="home">
-  <!-- ========== 暗号门：打开网站前先输入密码 ========== -->
+  <!-- ========== 门禁：云端登录（有配置时）或本地暗号 ========== -->
   <div id="gate" class="gate" role="dialog" aria-labelledby="gate-title" aria-modal="true">
     <div class="gate-card">
       <p class="gate-kicker">PRIVATE JOURNAL</p>
       <h1 id="gate-title" class="gate-title">馨宝与树宝</h1>
-      <p class="gate-hint">输入暗号后进入</p>
-      <form id="gate-form" class="gate-form" autocomplete="off">
-        <label class="gate-label" for="gate-password">暗号</label>
-        <input
-          id="gate-password"
-          class="gate-input"
-          type="password"
-          name="password"
-          required
-          autofocus
-          placeholder="请输入暗号"
-        />
-        <p id="gate-error" class="gate-error" hidden>暗号不对，再试一次</p>
-        <button type="button" id="gate-btn" class="btn gate-btn">进入</button>
-      </form>
+
+      <!-- 云端登录 -->
+      <div id="gate-cloud" hidden>
+        <p class="gate-hint">用账号登录后，可与树宝/馨宝同步同一本日记</p>
+        <form id="cloud-auth-form" class="gate-form" autocomplete="on">
+          <label class="gate-label" for="cloud-email">邮箱</label>
+          <input id="cloud-email" class="gate-input" type="email" required placeholder="you@example.com" />
+          <label class="gate-label" for="cloud-password">密码</label>
+          <input id="cloud-password" class="gate-input" type="password" required minlength="6" placeholder="至少 6 位" />
+          <p id="cloud-auth-error" class="gate-error" hidden></p>
+          <div class="gate-actions">
+            <button type="submit" class="btn gate-btn" id="cloud-login-btn">登录</button>
+            <button type="button" class="btn btn-ghost gate-btn" id="cloud-signup-btn">注册</button>
+          </div>
+        </form>
+        <button type="button" class="linkish" id="btn-use-local-gate">改用本地暗号进入（不同步）</button>
+      </div>
+
+      <!-- 本地暗号（兼容旧方式） -->
+      <div id="gate-local">
+        <p class="gate-hint">输入暗号后进入</p>
+        <form id="gate-form" class="gate-form" autocomplete="off">
+          <label class="gate-label" for="gate-password">暗号</label>
+          <input
+            id="gate-password"
+            class="gate-input"
+            type="password"
+            name="password"
+            required
+            placeholder="请输入暗号"
+          />
+          <p id="gate-error" class="gate-error" hidden>暗号不对，再试一次</p>
+          <button type="button" id="gate-btn" class="btn gate-btn">进入</button>
+        </form>
+        <button type="button" class="linkish" id="btn-use-cloud-gate" hidden>改用账号登录（可同步）</button>
+      </div>
     </div>
   </div>
 
@@ -37,8 +58,36 @@
       <h1 class="hero-title">馨宝与树宝</h1>
       <p class="hero-sub">从 2025.12.4 开始的故事</p>
       <p class="hero-days">在一起第 <span id="days-together">0</span> 天</p>
-      <p class="privacy-note">私密本机站 · 点板块进入独立页面</p>
+      <p class="privacy-note" id="privacy-note">私密本机站 · 点板块进入独立页面</p>
+      <div id="cloud-user-bar" class="cloud-user-bar" hidden>
+        <span id="cloud-user-label"></span>
+        <button type="button" class="btn btn-ghost btn-mini-bar" id="btn-cloud-logout">退出登录</button>
+      </div>
     </header>
+
+    <section id="pair-panel" class="home-pair" aria-label="二人云端同步" hidden>
+      <div class="pair-head">
+        <p class="pair-kicker">CLOUD PAIR</p>
+        <h2 class="pair-title">二人云端本</h2>
+      </div>
+      <p id="pair-status" class="pair-status">正在读取配对状态…</p>
+      <p id="pair-msg" class="pair-msg" hidden></p>
+      <div id="pair-actions" class="pair-actions" hidden>
+        <button type="button" class="btn" id="btn-create-pair">创建二人空间</button>
+        <form id="join-pair-form" class="pair-join">
+          <input id="join-pair-code" type="text" maxlength="8" placeholder="输入邀请码" autocomplete="off" />
+          <button type="submit" class="btn btn-ghost">加入</button>
+        </form>
+      </div>
+      <div id="pair-waiting" class="pair-banner" hidden>
+        <p>邀请码（发给另一半）：</p>
+        <p class="pair-code" id="pair-invite-code">------</p>
+        <button type="button" class="btn btn-ghost btn-mini-bar" id="btn-refresh-pair">对方加入后点这里刷新</button>
+      </div>
+      <div id="pair-ready" class="pair-banner is-ready" hidden>
+        <p>已连接。你们正在同步同一本日记（改动会上传云端）。</p>
+      </div>
+    </section>
 
     <section class="home-reminders" aria-label="纪念日提醒">
       <div class="reminders-head">
@@ -320,11 +369,20 @@
   <!-- 轻提示：保存成功等 -->
   <div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
 
-  <!-- 暗号门单独写在这里，避免被后面脚本影响 -->
+  <!-- 门禁：云端账号 或 本地暗号 -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="cloud-sync.js?v=1"></script>
   <script>
     (function () {
       var PASSWORD = "20251204";
       var KEY = "xinbao-shubao-gate-ok";
+      var cloudModePreferred = true;
+
+      var gateCloud = document.getElementById("gate-cloud");
+      var gateLocal = document.getElementById("gate-local");
+      var cloudError = document.getElementById("cloud-auth-error");
+      var localError = document.getElementById("gate-error");
 
       function unlock() {
         try {
@@ -339,22 +397,59 @@
         document.dispatchEvent(new Event("site-unlocked"));
       }
 
+      function showCloudError(text) {
+        if (!cloudError) return;
+        if (!text) {
+          cloudError.hidden = true;
+          cloudError.textContent = "";
+          return;
+        }
+        cloudError.hidden = false;
+        cloudError.textContent = text;
+      }
+
+      function cloudReady() {
+        return window.XinbaoCloud && XinbaoCloud.configured();
+      }
+
+      function showGateMode() {
+        if (cloudReady() && cloudModePreferred) {
+          if (gateCloud) gateCloud.hidden = false;
+          if (gateLocal) gateLocal.hidden = true;
+        } else {
+          if (gateCloud) gateCloud.hidden = true;
+          if (gateLocal) gateLocal.hidden = false;
+          var switchBtn = document.getElementById("btn-use-cloud-gate");
+          if (switchBtn) switchBtn.hidden = !cloudReady();
+        }
+      }
+
+      // 已解锁则直接进
       try {
-        if (sessionStorage.getItem(KEY) === "1") unlock();
+        if (sessionStorage.getItem(KEY) === "1") {
+          // 若启用了云端，尽量恢复会话后再进
+          if (cloudReady()) {
+            XinbaoCloud.restoreSession().finally(unlock);
+          } else {
+            unlock();
+          }
+          return;
+        }
       } catch (err) {}
+
+      showGateMode();
 
       var form = document.getElementById("gate-form");
       var input = document.getElementById("gate-password");
-      var error = document.getElementById("gate-error");
       var btn = document.getElementById("gate-btn");
 
       function checkPassword() {
         var typed = ((input && input.value) || "").trim();
         if (typed === PASSWORD) {
-          if (error) error.hidden = true;
+          if (localError) localError.hidden = true;
           unlock();
         } else {
-          if (error) error.hidden = false;
+          if (localError) localError.hidden = false;
           if (input) {
             input.value = "";
             input.focus();
@@ -374,17 +469,57 @@
           checkPassword();
         });
       }
-      if (input) {
-        input.addEventListener("keydown", function (e) {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            checkPassword();
-          }
+
+      var cloudForm = document.getElementById("cloud-auth-form");
+      if (cloudForm) {
+        cloudForm.addEventListener("submit", function (e) {
+          e.preventDefault();
+          showCloudError("");
+          var email = document.getElementById("cloud-email").value.trim();
+          var password = document.getElementById("cloud-password").value;
+          XinbaoCloud.signIn(email, password)
+            .then(function () {
+              unlock();
+            })
+            .catch(function (err) {
+              showCloudError((err && err.message) || "登录失败");
+            });
+        });
+      }
+
+      var signupBtn = document.getElementById("cloud-signup-btn");
+      if (signupBtn) {
+        signupBtn.addEventListener("click", function () {
+          showCloudError("");
+          var email = document.getElementById("cloud-email").value.trim();
+          var password = document.getElementById("cloud-password").value;
+          XinbaoCloud.signUp(email, password)
+            .then(function () {
+              unlock();
+            })
+            .catch(function (err) {
+              showCloudError((err && err.message) || "注册失败");
+            });
+        });
+      }
+
+      var useLocal = document.getElementById("btn-use-local-gate");
+      if (useLocal) {
+        useLocal.addEventListener("click", function () {
+          cloudModePreferred = false;
+          showGateMode();
+        });
+      }
+      var useCloud = document.getElementById("btn-use-cloud-gate");
+      if (useCloud) {
+        useCloud.addEventListener("click", function () {
+          cloudModePreferred = true;
+          showGateMode();
         });
       }
     })();
   </script>
   <script src="seed-data.js?v=20260711-1"></script>
-  <script src="script.js?v=mobile-fix"></script>
+  <script src="script.js?v=cloud-pair"></script>
 </body>
 </html>

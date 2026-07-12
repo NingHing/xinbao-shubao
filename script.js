@@ -189,6 +189,191 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function saveData() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    if (window.XinbaoCloud && XinbaoCloud.canSync()) {
+      XinbaoCloud.queuePush(data);
+    }
+  }
+
+  function setPairMsg(text, ok) {
+    var el = document.getElementById("pair-msg");
+    if (!el) return;
+    if (!text) {
+      el.hidden = true;
+      el.textContent = "";
+      el.classList.remove("ok");
+      return;
+    }
+    el.hidden = false;
+    el.textContent = text;
+    el.classList.toggle("ok", !!ok);
+  }
+
+  function renderPairPanel() {
+    var panel = document.getElementById("pair-panel");
+    var userBar = document.getElementById("cloud-user-bar");
+    var note = document.getElementById("privacy-note");
+    if (!window.XinbaoCloud || !XinbaoCloud.configured()) {
+      if (panel) panel.hidden = true;
+      if (userBar) userBar.hidden = true;
+      return;
+    }
+
+    var user = XinbaoCloud.getUser();
+    var pair = XinbaoCloud.getPair();
+    if (userBar) {
+      if (user) {
+        userBar.hidden = false;
+        var label = document.getElementById("cloud-user-label");
+        if (label) label.textContent = "已登录：" + (user.email || "");
+      } else {
+        userBar.hidden = true;
+      }
+    }
+
+    if (!user) {
+      if (panel) panel.hidden = true;
+      if (note) note.textContent = "私密本机站 · 点板块进入独立页面";
+      return;
+    }
+
+    if (panel) panel.hidden = false;
+    var actions = document.getElementById("pair-actions");
+    var waiting = document.getElementById("pair-waiting");
+    var ready = document.getElementById("pair-ready");
+    var status = document.getElementById("pair-status");
+    if (actions) actions.hidden = true;
+    if (waiting) waiting.hidden = true;
+    if (ready) ready.hidden = true;
+
+    if (!pair) {
+      if (status) status.textContent = "还没有二人空间。创建后生成邀请码，或输入对方邀请码加入。";
+      if (actions) actions.hidden = false;
+      if (note) note.textContent = "已登录云端 · 配对后即可双向同步";
+      return;
+    }
+
+    if (!pair.partner_id) {
+      if (status) status.textContent = "二人空间已创建，等待另一半加入。";
+      var codeEl = document.getElementById("pair-invite-code");
+      if (codeEl) codeEl.textContent = pair.invite_code;
+      if (waiting) waiting.hidden = false;
+      if (note) note.textContent = "等待配对 · 目前仍主要保存在本机";
+      return;
+    }
+
+    if (status) status.textContent = "你们已连接，正在同步同一本日记。";
+    if (ready) ready.hidden = false;
+    if (note) note.textContent = "云端同步已开启 · 双方看到同一本";
+  }
+
+  function wirePairControls() {
+    var createBtn = document.getElementById("btn-create-pair");
+    if (createBtn) {
+      createBtn.addEventListener("click", function () {
+        setPairMsg("");
+        XinbaoCloud.createPair()
+          .then(function () {
+            setPairMsg("已生成邀请码", true);
+            renderPairPanel();
+          })
+          .catch(function (err) {
+            setPairMsg((err && err.message) || "创建失败");
+          });
+      });
+    }
+
+    var joinForm = document.getElementById("join-pair-form");
+    if (joinForm) {
+      joinForm.addEventListener("submit", function (e) {
+        e.preventDefault();
+        setPairMsg("");
+        var code = document.getElementById("join-pair-code").value;
+        XinbaoCloud.joinPair(code)
+          .then(function () {
+            setPairMsg("加入成功，开始同步…", true);
+            return XinbaoCloud.pullJournal().then(function (payload) {
+              if (payload) {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+                data = loadData();
+                reindexOrders(data.anniversaries);
+                saveData();
+                renderAll();
+              } else {
+                // 云端还没有本子：把当前本机内容上传
+                return XinbaoCloud.pushJournal(data);
+              }
+            });
+          })
+          .then(function () {
+            renderPairPanel();
+            showToast("已连上共享本");
+          })
+          .catch(function (err) {
+            setPairMsg((err && err.message) || "加入失败");
+          });
+      });
+    }
+
+    var logoutBtn = document.getElementById("btn-cloud-logout");
+    if (logoutBtn) {
+      logoutBtn.addEventListener("click", function () {
+        XinbaoCloud.signOut().then(function () {
+          try {
+            sessionStorage.removeItem("xinbao-shubao-gate-ok");
+          } catch (err) {}
+          location.reload();
+        });
+      });
+    }
+
+    var refreshPairBtn = document.getElementById("btn-refresh-pair");
+    if (refreshPairBtn) {
+      refreshPairBtn.addEventListener("click", function () {
+        setPairMsg("");
+        XinbaoCloud.loadPair()
+          .then(function () {
+            renderPairPanel();
+            if (!XinbaoCloud.canSync()) {
+              setPairMsg("还在等待对方加入");
+              return null;
+            }
+            return XinbaoCloud.pullJournal().then(function (payload) {
+              if (payload) {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+                data = loadData();
+                reindexOrders(data.anniversaries);
+                renderAll();
+              }
+              return XinbaoCloud.pushJournal(data);
+            }).then(function () {
+              setPairMsg("已同步共享本", true);
+              showToast("云端同步已开启");
+              renderPairPanel();
+            });
+          })
+          .catch(function (err) {
+            setPairMsg((err && err.message) || "刷新失败");
+          });
+      });
+    }
+  }
+
+  function bootWithData() {
+    data = loadData();
+    reindexOrders(data.anniversaries);
+    try {
+      saveData();
+    } catch (err) {
+      console.warn("保存失败（可能是手机存储空间不足）", err);
+    }
+    updateDaysTogether();
+    fillDefaultDates();
+    renderPairPanel();
+    renderAll();
+    if (!location.hash || location.hash === "#") {
+      location.replace("#home");
+    }
+    showView(viewFromHash());
   }
 
   function showToast(message) {
@@ -1720,24 +1905,46 @@ document.addEventListener("DOMContentLoaded", function () {
     if (type) renderList(type);
   });
 
-  // ----- 启动（等暗号门打开后再加载）-----
+  // ----- 启动（等门禁打开后再加载）-----
   var appStarted = false;
   function startApp() {
     if (appStarted) return;
     if (document.body.classList.contains("is-locked")) return;
     appStarted = true;
+    wirePairControls();
+
     try {
-      applyPublishedSeedIfNeeded();
-      data = loadData();
-      reindexOrders(data.anniversaries);
-      try {
-        saveData();
-      } catch (err) {
-        console.warn("保存失败（可能是手机存储空间不足）", err);
+      if (window.XinbaoCloud && XinbaoCloud.configured() && XinbaoCloud.getUser()) {
+        XinbaoCloud.loadPair()
+          .then(function () {
+            renderPairPanel();
+            if (!XinbaoCloud.canSync()) {
+              // 已登录但未配对：仍用本机/种子
+              applyPublishedSeedIfNeeded();
+              bootWithData();
+              return null;
+            }
+            return XinbaoCloud.pullJournal().then(function (payload) {
+              if (payload) {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+              } else {
+                applyPublishedSeedIfNeeded();
+              }
+              bootWithData();
+              // 确保云端有一份
+              return XinbaoCloud.pushJournal(data);
+            });
+          })
+          .catch(function (err) {
+            console.warn("云端启动失败，回退本机", err);
+            applyPublishedSeedIfNeeded();
+            bootWithData();
+          });
+        return;
       }
-      updateDaysTogether();
-      fillDefaultDates();
-      renderAll();
+
+      applyPublishedSeedIfNeeded();
+      bootWithData();
     } catch (err) {
       console.warn("启动失败", err);
       try {
@@ -1745,10 +1952,6 @@ document.addEventListener("DOMContentLoaded", function () {
         renderAll();
       } catch (err2) {}
     }
-    if (!location.hash || location.hash === "#") {
-      location.replace("#home");
-    }
-    showView(viewFromHash());
   }
 
   startApp();
