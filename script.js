@@ -759,8 +759,8 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function drawImageToJpegWithOpts(img, maxSide, quality) {
-    maxSide = maxSide || 960;
-    quality = quality == null ? 0.58 : quality;
+    maxSide = maxSide || 1600;
+    quality = quality == null ? 0.82 : quality;
     var w = img.naturalWidth || img.width;
     var h = img.naturalHeight || img.height;
     if (!w || !h) throw new Error("图片尺寸无效");
@@ -806,14 +806,29 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  /** 把足迹里的大图逐级压小，直到整本接近云端可传大小 */
+  function journalHasEmbeddedPhotos(journal) {
+    var places = (journal && journal.places) || [];
+    for (var i = 0; i < places.length; i++) {
+      var photos = places[i] && places[i].photos;
+      if (!Array.isArray(photos)) continue;
+      for (var j = 0; j < photos.length; j++) {
+        if (typeof photos[j] === "string" && photos[j].indexOf("data:image") === 0) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /** 把足迹里的大图逐级压小，直到整本接近云端可传大小（仅处理 data:image） */
   function shrinkJournalPhotos(journal, targetBytes) {
     var clone = JSON.parse(JSON.stringify(journal || {}));
+    // 只在确实超限时才压；优先保清晰度
     var levels = [
-      { maxSide: 960, quality: 0.55 },
-      { maxSide: 720, quality: 0.48 },
-      { maxSide: 560, quality: 0.4 },
-      { maxSide: 420, quality: 0.34 }
+      { maxSide: 1400, quality: 0.78 },
+      { maxSide: 1200, quality: 0.7 },
+      { maxSide: 960, quality: 0.6 },
+      { maxSide: 720, quality: 0.5 }
     ];
 
     function currentSize() {
@@ -854,49 +869,76 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function ensureCloudPayload(journal) {
     var originalSize = JSON.stringify(journal || {}).length;
-    try {
-      showToast("正在处理足迹照片以便同步…");
-    } catch (err) {}
+    var hasEmbedded = journalHasEmbeddedPhotos(journal);
+    var oversized = originalSize > CLOUD_PAYLOAD_SOFT_LIMIT;
 
-    return shrinkJournalPhotos(journal, CLOUD_PAYLOAD_SOFT_LIMIT)
+    // 已是小体积且无内嵌大图：直接上传，不弹提示、不重复压缩
+    if (!oversized && !hasEmbedded) {
+      return Promise.resolve({
+        localJournal: journal,
+        cloudJournal: journal,
+        changed: false
+      });
+    }
+
+    // 只有真的要压缩时才弹提示，避免每次切回页面都刷「正在处理照片」
+    if (oversized) {
+      try {
+        showToast("日记较大，正在压缩后同步…");
+      } catch (err) {}
+    }
+
+    var start = oversized
+      ? shrinkJournalPhotos(journal, CLOUD_PAYLOAD_SOFT_LIMIT)
+      : Promise.resolve(JSON.parse(JSON.stringify(journal || {})));
+
+    return start
       .then(function (shrunk) {
         if (
+          hasEmbedded &&
+          !ensureCloudPayload._skipMigrate &&
           window.XinbaoCloud &&
           typeof XinbaoCloud.migrateEmbeddedPhotos === "function" &&
           XinbaoCloud.canSync()
         ) {
-          return XinbaoCloud.migrateEmbeddedPhotos(shrunk).then(function (res) {
-            return res && res.journal ? res.journal : shrunk;
-          }).catch(function () {
-            return shrunk;
-          });
+          return XinbaoCloud.migrateEmbeddedPhotos(shrunk)
+            .then(function (res) {
+              var next = res && res.journal ? res.journal : shrunk;
+              // 云相册不可用时，本会话内不再反复尝试，避免一直弹提示
+              if (res && res.failures > 0 && !res.changed) {
+                ensureCloudPayload._skipMigrate = true;
+              }
+              return next;
+            })
+            .catch(function () {
+              ensureCloudPayload._skipMigrate = true;
+              return shrunk;
+            });
         }
         return shrunk;
       })
       .then(function (localJournal) {
         var size = JSON.stringify(localJournal).length;
-        // 仍含大量 base64 或整体过大：云端只传瘦身版，本机尽量保留照片
-        var hasEmbedded = JSON.stringify(localJournal).indexOf("data:image") !== -1;
-        if (size <= CLOUD_PAYLOAD_SOFT_LIMIT && !hasEmbedded) {
+        var stillEmbedded = journalHasEmbeddedPhotos(localJournal);
+        if (size <= CLOUD_PAYLOAD_SOFT_LIMIT && !stillEmbedded) {
           return {
             localJournal: localJournal,
             cloudJournal: localJournal,
-            changed: size < originalSize || hasEmbedded
+            changed: true
           };
         }
-        if (size <= CLOUD_PAYLOAD_SOFT_LIMIT && hasEmbedded) {
-          // 有 base64 但体积还行：尽量仍上传；若失败上层会再处理
+        if (size <= CLOUD_PAYLOAD_SOFT_LIMIT) {
           return {
             localJournal: localJournal,
             cloudJournal: localJournal,
-            changed: size < originalSize
+            changed: size < originalSize || stillEmbedded !== hasEmbedded
           };
         }
         var safe = stripEmbeddedPhotos(localJournal);
         try {
           showToast(
             safe.removed
-              ? "照片过大，文字足迹会先同步到云端；大图留在本机"
+              ? "照片过大，文字足迹会先同步；大图留在本机"
               : "正在上传精简版日记…"
           );
         } catch (err) {}
@@ -914,9 +956,6 @@ document.addEventListener("DOMContentLoaded", function () {
           ready.cloudJournal = safer.journal;
           ready.stripped = true;
         }
-        ready.changed =
-          ready.changed ||
-          JSON.stringify(ready.localJournal).length < originalSize;
         return ready;
       });
   }
@@ -3060,8 +3099,8 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function drawImageToJpeg(img) {
-    // 默认更小：足迹照片会打进整本 JSON，太大就同步失败
-    return drawImageToJpegWithOpts(img, 960, 0.58);
+    // 兼顾手机查看清晰度与同步体积（过大仍会在上传前再压）
+    return drawImageToJpegWithOpts(img, 1600, 0.82);
   }
 
   function loadImageFromBlob(blob) {
@@ -3122,7 +3161,7 @@ document.addEventListener("DOMContentLoaded", function () {
         return heic2any({
           blob: file,
           toType: "image/jpeg",
-          quality: 0.6
+          quality: 0.85
         }).then(function (result) {
           return Array.isArray(result) ? result[0] : result;
         });
