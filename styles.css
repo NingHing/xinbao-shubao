@@ -1392,7 +1392,8 @@ body.is-locked .app-settings-btn {
   display: block;
 }
 
-.photo-preview-item button {
+.photo-preview-item button,
+.photo-remove-btn {
   position: absolute;
   top: 4px;
   right: 4px;
@@ -1405,6 +1406,112 @@ body.is-locked .app-settings-btn {
   cursor: pointer;
   font-size: 0.75rem;
   line-height: 1;
+  z-index: 2;
+}
+
+.photo-order-badge {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  min-width: 1.2rem;
+  height: 1.2rem;
+  padding: 0 0.25rem;
+  border-radius: 999px;
+  background: rgba(196, 95, 122, 0.92);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.2rem;
+  text-align: center;
+  z-index: 2;
+}
+
+.photo-order-btns {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  gap: 0;
+  z-index: 2;
+}
+
+.photo-move-btn {
+  position: static !important;
+  flex: 1;
+  width: auto !important;
+  height: 1.55rem !important;
+  border: none;
+  border-radius: 0 !important;
+  background: rgba(61, 47, 56, 0.55) !important;
+  color: #fff;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.photo-move-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.photo-move-btn:not(:disabled):active {
+  background: rgba(196, 95, 122, 0.85) !important;
+}
+
+.btn-star {
+  font: inherit;
+  font-size: 1.05rem;
+  line-height: 1;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid rgba(143, 117, 132, 0.3);
+  border-radius: 999px;
+  min-width: 2rem;
+  padding: 0.2rem 0.55rem;
+  cursor: pointer;
+}
+
+.btn-star.is-on {
+  color: #c45f7a;
+  border-color: rgba(196, 95, 122, 0.45);
+  background: rgba(248, 238, 242, 0.95);
+}
+
+.star-badge {
+  display: inline-block;
+  margin-right: 0.3rem;
+  color: #c45f7a;
+  font-size: 0.95em;
+}
+
+.entry-item.is-starred {
+  border-color: rgba(196, 95, 122, 0.35);
+  box-shadow: 0 8px 22px rgba(196, 95, 122, 0.1);
+}
+
+.star-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.45rem;
+}
+
+.star-filter-chip {
+  font: inherit;
+  font-size: 0.78rem;
+  padding: 0.28rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(217, 123, 146, 0.28);
+  background: rgba(255, 252, 253, 0.85);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.star-filter-chip.is-active {
+  color: #fff;
+  background: var(--rose-deep);
+  border-color: var(--rose-deep);
 }
 
 .photo-add-tile {
