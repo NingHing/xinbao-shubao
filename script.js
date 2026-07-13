@@ -1,13 +1,16 @@
 /* =========================================
-   馨宝与树宝 · script.js
+   并记 · script.js
    ========================================= */
 
 document.addEventListener("DOMContentLoaded", function () {
   var START_DATE = "2025-12-04";
   var STORAGE_KEY = "xinbao-shubao-journal-v1";
   var SEED_VERSION_KEY = "xinbao-shubao-seed-v";
+  var PRODUCT_NAME = "并记";
 
   var defaultData = {
+    siteTitle: PRODUCT_NAME,
+    siteTitleAt: "",
     anniversaries: [
       {
         id: "seed-anni-1",
@@ -91,16 +94,59 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  /** 云端与本机合并：两边独有的都留；同一 id 以 updatedAt 较新为准 */
+  /** 云端与本机合并：列表按 id；名称等字段按更新时间 */
   function mergeJournalPayload(localData, remotePayload) {
     var local = localData || JSON.parse(JSON.stringify(defaultData));
     var remote = remotePayload || {};
     var out = {};
     Object.keys(defaultData).forEach(function (key) {
-      // remote 先入，local 后入：时间相同或都无时间时，保留本机刚改的
-      out[key] = mergeById(remote[key], local[key]);
+      if (Array.isArray(defaultData[key])) {
+        out[key] = mergeById(remote[key], local[key]);
+        return;
+      }
+      if (key === "siteTitle" || key === "siteTitleAt") {
+        return;
+      }
+      out[key] =
+        local[key] != null && local[key] !== ""
+          ? local[key]
+          : remote[key] != null
+            ? remote[key]
+            : defaultData[key];
     });
+
+    var lAt = Date.parse(local.siteTitleAt || "") || 0;
+    var rAt = Date.parse(remote.siteTitleAt || "") || 0;
+    if (lAt >= rAt) {
+      out.siteTitle = normalizeSiteTitle(local.siteTitle);
+      out.siteTitleAt = local.siteTitleAt || "";
+    } else {
+      out.siteTitle = normalizeSiteTitle(remote.siteTitle);
+      out.siteTitleAt = remote.siteTitleAt || "";
+    }
     return out;
+  }
+
+  function normalizeSiteTitle(title) {
+    var t = String(title || "").trim();
+    if (!t) return PRODUCT_NAME;
+    if (t.length > 24) t = t.slice(0, 24);
+    return t;
+  }
+
+  function applySiteTitle() {
+    if (!data) return;
+    var title = normalizeSiteTitle(data.siteTitle);
+    data.siteTitle = title;
+    var hero = document.getElementById("site-title");
+    if (hero) hero.textContent = title;
+    try {
+      document.title = title;
+    } catch (err) {}
+    var input = document.getElementById("settings-site-title");
+    if (input && document.activeElement !== input) {
+      input.value = title;
+    }
   }
 
   function touchUpdatedAt(item) {
@@ -200,7 +246,9 @@ document.addEventListener("DOMContentLoaded", function () {
     try {
       var parsed = JSON.parse(raw);
       Object.keys(defaultData).forEach(function (key) {
-        if (!Array.isArray(parsed[key])) parsed[key] = [];
+        if (Array.isArray(defaultData[key])) {
+          if (!Array.isArray(parsed[key])) parsed[key] = [];
+        }
       });
       parsed.anniversaries = normalizeAnniversaries(parsed.anniversaries);
       // 大事记：兼容旧的单日期字段，支持开始～结束
@@ -264,6 +312,20 @@ document.addEventListener("DOMContentLoaded", function () {
       });
       if (parsed.anniversaries.length === 0) {
         parsed.anniversaries = JSON.parse(JSON.stringify(defaultData.anniversaries));
+      }
+      // 日记本名称：旧数据没有该字段时，沿用你们原来的专属名；全新本子默认「并记」
+      if (!parsed.siteTitle || !String(parsed.siteTitle).trim()) {
+        var hasOwnContent =
+          (parsed.events && parsed.events.length) ||
+          (parsed.sweets && parsed.sweets.length) ||
+          (parsed.places && parsed.places.length) ||
+          (parsed.fights && parsed.fights.length) ||
+          (parsed.anniversaries && parsed.anniversaries.length > 1);
+        parsed.siteTitle = hasOwnContent ? "馨宝与树宝" : PRODUCT_NAME;
+        parsed.siteTitleAt = parsed.siteTitleAt || "";
+      } else {
+        parsed.siteTitle = normalizeSiteTitle(parsed.siteTitle);
+        parsed.siteTitleAt = parsed.siteTitleAt || "";
       }
       return parsed;
     } catch (err) {
@@ -341,6 +403,7 @@ document.addEventListener("DOMContentLoaded", function () {
   function openSettings() {
     var sheet = document.getElementById("settings-sheet");
     if (sheet) sheet.hidden = false;
+    applySiteTitle();
     renderPairPanel();
   }
 
@@ -468,6 +531,32 @@ document.addEventListener("DOMContentLoaded", function () {
       if (e.target.closest("[data-close-settings]")) closeSettings();
     });
 
+    var titleForm = document.getElementById("settings-title-form");
+    if (titleForm) {
+      titleForm.addEventListener("submit", function (e) {
+        e.preventDefault();
+        if (!data) data = loadData();
+        var input = document.getElementById("settings-site-title");
+        var next = normalizeSiteTitle(input && input.value);
+        data.siteTitle = next;
+        data.siteTitleAt = new Date().toISOString();
+        saveData();
+        applySiteTitle();
+        showToast("名称已更新");
+      });
+    }
+    var resetTitleBtn = document.getElementById("btn-reset-site-title");
+    if (resetTitleBtn) {
+      resetTitleBtn.addEventListener("click", function () {
+        if (!data) data = loadData();
+        data.siteTitle = PRODUCT_NAME;
+        data.siteTitleAt = new Date().toISOString();
+        saveData();
+        applySiteTitle();
+        showToast("已恢复为并记");
+      });
+    }
+
     var settingsForm = document.getElementById("settings-auth-form");
     if (settingsForm) {
       settingsForm.addEventListener("submit", function (e) {
@@ -490,6 +579,7 @@ document.addEventListener("DOMContentLoaded", function () {
                   );
                   localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
                   data = loadData();
+                  applySiteTitle();
                   reindexOrders(data.anniversaries);
                   renderAll();
                 }
@@ -685,6 +775,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     updateDaysTogether();
     fillDefaultDates();
+    applySiteTitle();
     renderPairPanel();
     renderAll();
     if (!location.hash || location.hash === "#") {
@@ -1371,6 +1462,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function renderAll() {
+    applySiteTitle();
     ["anniversaries", "events", "sweets", "places", "fights"].forEach(renderList);
     renderReminders();
   }

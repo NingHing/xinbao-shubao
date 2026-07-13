@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>馨宝与树宝</title>
-  <link rel="stylesheet" href="styles.css?v=hide-pair-actions" />
+  <title>并记</title>
+  <link rel="stylesheet" href="styles.css?v=site-title" />
 </head>
 <body class="is-locked" data-view="home">
   <!-- App 顶栏：设置入口（解锁后显示） -->
@@ -23,6 +23,26 @@
         <h2 id="settings-title" class="settings-title">设置</h2>
         <button type="button" class="settings-close" data-close-settings aria-label="关闭">×</button>
       </header>
+
+      <section class="settings-section" aria-labelledby="settings-journal-heading">
+        <h3 id="settings-journal-heading" class="settings-section-title">日记本名称</h3>
+        <p class="settings-hint">产品名是「并记」。你们可以改成专属名字，例如「馨宝与树宝」。</p>
+        <form id="settings-title-form" class="settings-form">
+          <label class="settings-label" for="settings-site-title">显示名称</label>
+          <input
+            id="settings-site-title"
+            class="settings-input"
+            type="text"
+            maxlength="24"
+            placeholder="并记"
+            autocomplete="off"
+          />
+          <div class="settings-actions">
+            <button type="submit" class="btn">保存名称</button>
+            <button type="button" class="btn btn-ghost" id="btn-reset-site-title">恢复为并记</button>
+          </div>
+        </form>
+      </section>
 
       <section class="settings-section" aria-labelledby="settings-account-heading">
         <h3 id="settings-account-heading" class="settings-section-title">账户</h3>
@@ -80,12 +100,12 @@
   <!-- ========== 门禁：云端登录（有配置时）或本地暗号 ========== -->
   <div id="gate" class="gate" role="dialog" aria-labelledby="gate-title" aria-modal="true">
     <div class="gate-card">
-      <p class="gate-kicker">PRIVATE JOURNAL</p>
-      <h1 id="gate-title" class="gate-title">馨宝与树宝</h1>
+      <p class="gate-kicker">BINJI · PRIVATE JOURNAL</p>
+      <h1 id="gate-title" class="gate-title">并记</h1>
 
       <!-- 云端登录 -->
       <div id="gate-cloud" hidden>
-        <p class="gate-hint">用账号登录后，可与树宝/馨宝同步同一本日记</p>
+        <p class="gate-hint">登录后可与另一半同步同一本日记</p>
         <form id="cloud-auth-form" class="gate-form" autocomplete="on">
           <label class="gate-label" for="cloud-email">邮箱</label>
           <input id="cloud-email" class="gate-input" type="email" required placeholder="you@example.com" />
@@ -125,7 +145,7 @@
   <div id="view-home" class="view view-home is-active">
     <header class="home-hero">
       <p class="hero-kicker">OUR PRIVATE JOURNAL</p>
-      <h1 class="hero-title">馨宝与树宝</h1>
+      <h1 class="hero-title" id="site-title">并记</h1>
       <p class="hero-sub">从 2025.12.4 开始的故事</p>
       <p class="hero-days">在一起第 <span id="days-together">0</span> 天</p>
       <p class="privacy-note" id="privacy-note">私密本机站 · 点板块进入独立页面</p>
@@ -564,6 +584,6 @@
     })();
   </script>
   <script src="seed-data.js?v=20260713-recover-sweets"></script>
-  <script src="script.js?v=hide-pair-actions"></script>
+  <script src="script.js?v=site-title"></script>
 </body>
 </html>
