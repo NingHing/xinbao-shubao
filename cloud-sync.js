@@ -46,7 +46,15 @@ window.XinbaoCloud = (function () {
     if (!window.supabase || !window.supabase.createClient) return null;
     client = window.supabase.createClient(
       window.APP_CONFIG.supabaseUrl,
-      window.APP_CONFIG.supabaseAnonKey
+      window.APP_CONFIG.supabaseAnonKey,
+      {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true,
+          storage: window.localStorage
+        }
+      }
     );
     return client;
   }

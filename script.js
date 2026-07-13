@@ -682,7 +682,11 @@ document.addEventListener("DOMContentLoaded", function () {
       logoutBtn.addEventListener("click", function () {
         XinbaoCloud.signOut().then(function () {
           try {
-            sessionStorage.removeItem("xinbao-shubao-gate-ok");
+            if (window.XinbaoClearGate) window.XinbaoClearGate();
+            else {
+              localStorage.removeItem("xinbao-shubao-gate-ok");
+              sessionStorage.removeItem("xinbao-shubao-gate-ok");
+            }
           } catch (err) {}
           location.reload();
         });

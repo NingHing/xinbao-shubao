@@ -443,7 +443,7 @@
   <!-- 门禁：云端账号 或 本地暗号 -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
-  <script src="cloud-sync.js?v=pair-fix"></script>
+  <script src="cloud-sync.js?v=stay-logged-in"></script>
   <script>
     (function () {
       var PASSWORD = "20251204";
@@ -455,10 +455,43 @@
       var cloudError = document.getElementById("cloud-auth-error");
       var localError = document.getElementById("gate-error");
 
-      function unlock() {
+      function rememberUnlock() {
         try {
-          sessionStorage.setItem(KEY, "1");
+          localStorage.setItem(KEY, "1");
         } catch (err) {}
+        try {
+          sessionStorage.removeItem(KEY);
+        } catch (err2) {}
+      }
+
+      function hasRememberedUnlock() {
+        try {
+          if (localStorage.getItem(KEY) === "1") return true;
+        } catch (err) {}
+        try {
+          // 兼容旧版：曾写在 sessionStorage
+          if (sessionStorage.getItem(KEY) === "1") {
+            rememberUnlock();
+            return true;
+          }
+        } catch (err2) {}
+        return false;
+      }
+
+      function clearRememberedUnlock() {
+        try {
+          localStorage.removeItem(KEY);
+        } catch (err) {}
+        try {
+          sessionStorage.removeItem(KEY);
+        } catch (err2) {}
+      }
+
+      // 给设置里「退出登录」用
+      window.XinbaoClearGate = clearRememberedUnlock;
+
+      function unlock() {
+        rememberUnlock();
         document.body.classList.remove("is-locked");
         var gate = document.getElementById("gate");
         if (gate) {
@@ -497,20 +530,33 @@
         }
       }
 
-      // 已解锁则直接进
-      try {
-        if (sessionStorage.getItem(KEY) === "1") {
-          // 若启用了云端，尽量恢复会话后再进
-          if (cloudReady()) {
-            XinbaoCloud.restoreSession().finally(unlock);
-          } else {
-            unlock();
-          }
+      function enterIfPossible() {
+        // 1) 云端还有登录会话 → 直接进，不必再输密码
+        if (cloudReady()) {
+          XinbaoCloud.restoreSession()
+            .then(function (user) {
+              if (user) {
+                unlock();
+                return;
+              }
+              // 2) 没有云端会话，但本机记得「开过门」→ 本地暗号模式也能进
+              if (hasRememberedUnlock()) {
+                unlock();
+                return;
+              }
+              showGateMode();
+            })
+            .catch(function () {
+              if (hasRememberedUnlock()) unlock();
+              else showGateMode();
+            });
           return;
         }
-      } catch (err) {}
+        if (hasRememberedUnlock()) unlock();
+        else showGateMode();
+      }
 
-      showGateMode();
+      enterIfPossible();
 
       var form = document.getElementById("gate-form");
       var input = document.getElementById("gate-password");
@@ -593,7 +639,7 @@
     })();
   </script>
   <script src="seed-data.js?v=20260713-recover-sweets"></script>
-  <script src="script.js?v=tiles-back"></script>
+  <script src="script.js?v=stay-logged-in"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", function () {
