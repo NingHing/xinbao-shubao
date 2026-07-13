@@ -353,13 +353,20 @@
       <div class="modal-panel" role="dialog" aria-labelledby="modal-event-title">
         <h3 id="modal-event-title">记下重要的事</h3>
         <form class="entry-form entry-form--modal" id="form-event" data-type="events">
-          <label class="full">来自谁
-            <select name="author" class="author-select" required>
-              <option data-nick-slot="a" value="馨宝">馨宝</option>
-              <option data-nick-slot="b" value="树宝">树宝</option>
-              <option value="我们">我们</option>
-            </select>
-          </label>
+          <input type="hidden" name="author" id="event-author-hidden" value="我们" />
+          <fieldset class="full anni-kind-field">
+            <legend class="anni-kind-legend">来自谁</legend>
+            <div class="anni-kind-chips" role="radiogroup" aria-label="来自谁">
+              <label class="anni-kind-chip">
+                <input type="radio" name="voice" value="me" checked />
+                <span data-voice-me-label>我（馨宝）</span>
+              </label>
+              <label class="anni-kind-chip">
+                <input type="radio" name="voice" value="us" />
+                <span>我们</span>
+              </label>
+            </div>
+          </fieldset>
           <label class="full">标题<input name="title" type="text" required placeholder="发生了什么重要的事" /></label>
           <div class="date-range-row">
             <label>开始日期<input name="dateStart" type="date" required /></label>
@@ -547,13 +554,20 @@
       <div class="modal-panel modal-panel--wide" role="dialog" aria-labelledby="modal-fight-title">
         <h3 id="modal-fight-title">记一次和解</h3>
         <form class="entry-form entry-form--modal" id="form-fight" data-type="fights">
-          <label class="full">来自谁
-            <select name="author" class="author-select" required>
-              <option data-nick-slot="a" value="馨宝">馨宝</option>
-              <option data-nick-slot="b" value="树宝">树宝</option>
-              <option value="我们">我们</option>
-            </select>
-          </label>
+          <input type="hidden" name="author" id="fight-author-hidden" value="我们" />
+          <fieldset class="full anni-kind-field">
+            <legend class="anni-kind-legend">来自谁</legend>
+            <div class="anni-kind-chips" role="radiogroup" aria-label="来自谁">
+              <label class="anni-kind-chip">
+                <input type="radio" name="voice" value="me" checked />
+                <span data-voice-me-label>我（馨宝）</span>
+              </label>
+              <label class="anni-kind-chip">
+                <input type="radio" name="voice" value="us" />
+                <span>我们</span>
+              </label>
+            </div>
+          </fieldset>
           <label class="full">日期<input name="date" type="date" required /></label>
           <label class="full">主题<input name="title" type="text" required placeholder="关于什么" /></label>
           <label class="full">经过<textarea name="note" rows="3" placeholder="当时发生了什么（可选）"></textarea></label>
@@ -779,7 +793,7 @@
     })();
   </script>
   <script src="seed-data.js?v=20260713-recover-sweets"></script>
-  <script src="script.js?v=my-role-v1"></script>
+  <script src="script.js?v=my-role-all-v1"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", function () {

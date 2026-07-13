@@ -2395,7 +2395,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     : "";
       var form = formId ? document.getElementById(formId) : null;
       if (!form) return;
-      if (activeDraft.kind === "sweets" || activeDraft.kind === "sweet-reply") {
+      if (activeDraft.kind === "sweets" || activeDraft.kind === "sweet-reply" || activeDraft.kind === "events" || activeDraft.kind === "fights") {
         syncVoiceToAuthor(form);
       }
       saveDraftFromForm(
@@ -3130,8 +3130,8 @@ document.addEventListener("DOMContentLoaded", function () {
     setModalTitle("modal-event-title", item ? "编辑重要的事" : "记下重要的事");
     var form = document.getElementById("form-event");
     form.reset();
+    applyAuthorLabels();
     if (item) {
-      form.author.value = item.author || "我们";
       form.title.value = item.title || "";
       form.dateStart.value = item.dateStart || item.date || "";
       form.ongoing.checked = item.ongoing === true;
@@ -3141,15 +3141,21 @@ document.addEventListener("DOMContentLoaded", function () {
         form.dateEnd.value = item.dateEnd || item.dateStart || item.date || "";
       }
       form.note.value = item.note || "";
+      setVoiceFromAuthor(form, item.author || getMyNick());
     } else {
       var today = todayStr();
-      form.author.value = "我们";
       form.dateStart.value = today;
       form.dateEnd.value = today;
       form.ongoing.checked = false;
+      setVoiceFromAuthor(form, getMyNick());
     }
+    syncVoiceToAuthor(form);
     setActiveDraft("events", editingId);
     restoreDraftToForm("events", editingId, form);
+    if (form.elements.author && form.elements.author.value) {
+      setVoiceFromAuthor(form, form.elements.author.value);
+    }
+    syncVoiceToAuthor(form);
     syncEventOngoingUI();
     snapshotDraftBaseline(form);
     eventModal.hidden = false;
@@ -3272,19 +3278,25 @@ document.addEventListener("DOMContentLoaded", function () {
     setModalTitle("modal-fight-title", item ? "编辑和解" : "记一次和解");
     var form = document.getElementById("form-fight");
     form.reset();
+    applyAuthorLabels();
     if (item) {
-      form.author.value = item.author || "我们";
       form.date.value = item.date || "";
       form.title.value = item.title || "";
       form.note.value = item.note || "";
       form.resolve.value = item.resolve || "";
       form.reflection.value = item.reflection || "";
+      setVoiceFromAuthor(form, item.author || getMyNick());
     } else {
-      form.author.value = "我们";
       form.date.value = todayStr();
+      setVoiceFromAuthor(form, getMyNick());
     }
+    syncVoiceToAuthor(form);
     setActiveDraft("fights", editingId);
     restoreDraftToForm("fights", editingId, form);
+    if (form.elements.author && form.elements.author.value) {
+      setVoiceFromAuthor(form, form.elements.author.value);
+    }
+    syncVoiceToAuthor(form);
     snapshotDraftBaseline(form);
     fightModal.hidden = false;
     form.title.focus();
@@ -3355,7 +3367,12 @@ document.addEventListener("DOMContentLoaded", function () {
     var form = e.target.closest("form");
     if (!form) return;
     syncVoiceToAuthor(form);
-    if (form.id === "form-sweet" || form.id === "form-sweet-reply") {
+    if (
+      form.id === "form-sweet" ||
+      form.id === "form-sweet-reply" ||
+      form.id === "form-event" ||
+      form.id === "form-fight"
+    ) {
       queueActiveDraftSave();
     }
   });
@@ -4014,6 +4031,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
       // 重要的事：支持单日、区间，或持续至今
       if (type === "events") {
+        syncVoiceToAuthor(form);
         var eventStart = (fd.get("dateStart") || "").toString();
         var eventOngoing = !!(form.ongoing && form.ongoing.checked);
         var eventEnd = eventOngoing ? "" : (fd.get("dateEnd") || "").toString();
@@ -4024,7 +4042,8 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!eventOngoing && !eventEnd) eventEnd = eventStart;
         var eventFields = {
           title: (fd.get("title") || "").toString().trim(),
-          author: (fd.get("author") || "").toString(),
+          author:
+            (form.elements.author && form.elements.author.value) || getMyNick(),
           dateStart: eventStart,
           dateEnd: eventEnd,
           date: eventStart,
