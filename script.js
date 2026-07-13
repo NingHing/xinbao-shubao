@@ -2002,6 +2002,31 @@ document.addEventListener("DOMContentLoaded", function () {
     return true;
   }
 
+  /** 打开弹窗填好内容后记录快照；关闭时只有改过才提示草稿已保存 */
+  var draftBaselineJson = "";
+
+  function snapshotDraftBaseline(form, photoList) {
+    var fields = collectFormFields(form);
+    if (photoList) fields.__photos = photoList.slice();
+    draftBaselineJson = JSON.stringify(fields);
+  }
+
+  function isDraftDirty(form, photoList) {
+    if (!form || !draftBaselineJson) return false;
+    var fields = collectFormFields(form);
+    if (photoList) fields.__photos = photoList.slice();
+    return JSON.stringify(fields) !== draftBaselineJson;
+  }
+
+  function maybePersistDraftOnClose(kind, id, form, extra, photoList) {
+    if (!form || !isDraftDirty(form, photoList)) return false;
+    if (saveDraftFromForm(kind, id, form, extra)) {
+      showToast("草稿已保存");
+      return true;
+    }
+    return false;
+  }
+
   function setActiveDraft(kind, id, extra) {
     activeDraft = {
       kind: kind || "",
@@ -2012,6 +2037,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function clearActiveDraft() {
     activeDraft = { kind: "", id: null, extra: "" };
+    draftBaselineJson = "";
   }
 
   function queueActiveDraftSave() {
@@ -2749,6 +2775,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (restoreDraftToForm("anniversaries", editingId, form)) {
       showToast("已恢复草稿");
     }
+    snapshotDraftBaseline(form);
     modal.hidden = false;
     form.title.focus();
   }
@@ -2757,9 +2784,7 @@ document.addEventListener("DOMContentLoaded", function () {
     opts = opts || {};
     var form = document.getElementById("form-anniversary");
     if (!opts.skipDraftSave && form) {
-      if (saveDraftFromForm("anniversaries", editingId, form)) {
-        showToast("草稿已保存");
-      }
+      maybePersistDraftOnClose("anniversaries", editingId, form);
     }
     modal.hidden = true;
     if (form) form.reset();
@@ -2817,6 +2842,7 @@ document.addEventListener("DOMContentLoaded", function () {
       showToast("已恢复草稿");
     }
     syncEventOngoingUI();
+    snapshotDraftBaseline(form);
     eventModal.hidden = false;
     form.title.focus();
   }
@@ -2837,6 +2863,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (restoreDraftToForm("sweets", editingId, form)) {
       showToast("已恢复草稿");
     }
+    snapshotDraftBaseline(form);
     sweetModal.hidden = false;
     form.note.focus();
   }
@@ -2897,6 +2924,7 @@ document.addEventListener("DOMContentLoaded", function () {
     ) {
       showToast("已恢复草稿");
     }
+    snapshotDraftBaseline(form);
     sweetReplyModal.hidden = false;
     form.note.focus();
   }
@@ -2905,16 +2933,12 @@ document.addEventListener("DOMContentLoaded", function () {
     opts = opts || {};
     var form = document.getElementById("form-sweet-reply");
     if (!opts.skipDraftSave && form) {
-      if (
-        saveDraftFromForm(
-          "sweet-reply",
-          replyEditing.replyId || null,
-          form,
-          replyEditing.parentId
-        )
-      ) {
-        showToast("草稿已保存");
-      }
+      maybePersistDraftOnClose(
+        "sweet-reply",
+        replyEditing.replyId || null,
+        form,
+        replyEditing.parentId
+      );
     }
     if (sweetReplyModal) sweetReplyModal.hidden = true;
     if (form) form.reset();
@@ -2949,6 +2973,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (restoreDraftToForm("fights", editingId, form)) {
       showToast("已恢复草稿");
     }
+    snapshotDraftBaseline(form);
     fightModal.hidden = false;
     form.title.focus();
   }
@@ -2957,9 +2982,7 @@ document.addEventListener("DOMContentLoaded", function () {
     opts = opts || {};
     var form = document.getElementById("form-event");
     if (!opts.skipDraftSave && form) {
-      if (saveDraftFromForm("events", editingId, form)) {
-        showToast("草稿已保存");
-      }
+      maybePersistDraftOnClose("events", editingId, form);
     }
     eventModal.hidden = true;
     if (form) form.reset();
@@ -2972,9 +2995,7 @@ document.addEventListener("DOMContentLoaded", function () {
     opts = opts || {};
     var form = document.getElementById("form-sweet");
     if (!opts.skipDraftSave && form) {
-      if (saveDraftFromForm("sweets", editingId, form)) {
-        showToast("草稿已保存");
-      }
+      maybePersistDraftOnClose("sweets", editingId, form);
     }
     sweetModal.hidden = true;
     if (form) form.reset();
@@ -2987,9 +3008,7 @@ document.addEventListener("DOMContentLoaded", function () {
     opts = opts || {};
     var form = document.getElementById("form-fight");
     if (!opts.skipDraftSave && form) {
-      if (saveDraftFromForm("fights", editingId, form)) {
-        showToast("草稿已保存");
-      }
+      maybePersistDraftOnClose("fights", editingId, form);
     }
     fightModal.hidden = true;
     if (form) form.reset();
@@ -3256,6 +3275,7 @@ document.addEventListener("DOMContentLoaded", function () {
       showToast("已恢复草稿");
     }
     renderPlacePreview();
+    snapshotDraftBaseline(form, pendingPlacePhotos);
     placeModal.hidden = false;
     form.title.focus();
   }
@@ -3264,9 +3284,13 @@ document.addEventListener("DOMContentLoaded", function () {
     opts = opts || {};
     var form = document.getElementById("form-place");
     if (!opts.skipDraftSave && form) {
-      if (saveDraftFromForm("places", editingId, form)) {
-        showToast("草稿已保存");
-      }
+      maybePersistDraftOnClose(
+        "places",
+        editingId,
+        form,
+        "",
+        pendingPlacePhotos
+      );
     }
     placeModal.hidden = true;
     if (form) form.reset();
