@@ -23,6 +23,9 @@ document.addEventListener("DOMContentLoaded", function () {
   var defaultData = {
     siteTitle: PRODUCT_NAME,
     siteTitleAt: "",
+    nickA: "馨宝",
+    nickB: "树宝",
+    nicknamesAt: "",
     tombstones: {},
     anniversaries: [
       {
@@ -244,6 +247,9 @@ document.addEventListener("DOMContentLoaded", function () {
       if (key === "siteTitle" || key === "siteTitleAt") {
         return;
       }
+      if (key === "nickA" || key === "nickB" || key === "nicknamesAt") {
+        return;
+      }
       out[key] =
         local[key] != null && local[key] !== ""
           ? local[key]
@@ -260,6 +266,18 @@ document.addEventListener("DOMContentLoaded", function () {
     } else {
       out.siteTitle = normalizeSiteTitle(remote.siteTitle);
       out.siteTitleAt = remote.siteTitleAt || "";
+    }
+
+    var lnAt = Date.parse(local.nicknamesAt || "") || 0;
+    var rnAt = Date.parse(remote.nicknamesAt || "") || 0;
+    if (lnAt >= rnAt) {
+      out.nickA = normalizeNickname(local.nickA, "馨宝");
+      out.nickB = normalizeNickname(local.nickB, "树宝");
+      out.nicknamesAt = local.nicknamesAt || "";
+    } else {
+      out.nickA = normalizeNickname(remote.nickA, "馨宝");
+      out.nickB = normalizeNickname(remote.nickB, "树宝");
+      out.nicknamesAt = remote.nicknamesAt || "";
     }
 
     out.tombstones = mergeTombstones(local.tombstones, remote.tombstones);
@@ -338,6 +356,75 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!t) return PRODUCT_NAME;
     if (t.length > 24) t = t.slice(0, 24);
     return t;
+  }
+
+  function normalizeNickname(name, fallback) {
+    var t = String(name == null ? "" : name).trim();
+    if (!t) t = fallback || "馨宝";
+    if (t.length > 12) t = t.slice(0, 12);
+    if (t === "我们") t = fallback || "馨宝";
+    return t;
+  }
+
+  function getNickA() {
+    return normalizeNickname(data && data.nickA, "馨宝");
+  }
+
+  function getNickB() {
+    return normalizeNickname(data && data.nickB, "树宝");
+  }
+
+  function ensureNicknames() {
+    if (!data) return;
+    data.nickA = normalizeNickname(data.nickA, "馨宝");
+    data.nickB = normalizeNickname(data.nickB, "树宝");
+    if (data.nickA === data.nickB) {
+      data.nickB = data.nickA === "馨宝" ? "树宝" : "馨宝";
+    }
+  }
+
+  /** 改称呼时，把日记里旧作者名改成新名字 */
+  function migrateAuthorName(fromName, toName) {
+    if (!data || !fromName || !toName || fromName === toName) return;
+    function fix(item) {
+      if (!item) return;
+      if (item.author === fromName) item.author = toName;
+    }
+    (data.events || []).forEach(fix);
+    (data.fights || []).forEach(fix);
+    (data.sweets || []).forEach(function (sweet) {
+      fix(sweet);
+      (sweet.replies || []).forEach(fix);
+    });
+  }
+
+  function applyAuthorLabels() {
+    if (!data) return;
+    ensureNicknames();
+    var a = getNickA();
+    var b = getNickB();
+    document.querySelectorAll("[data-nick-slot='a']").forEach(function (el) {
+      if (el.tagName === "OPTION") {
+        el.value = a;
+        el.textContent = a;
+      } else {
+        el.setAttribute("data-author", a);
+        el.textContent = a;
+      }
+    });
+    document.querySelectorAll("[data-nick-slot='b']").forEach(function (el) {
+      if (el.tagName === "OPTION") {
+        el.value = b;
+        el.textContent = b;
+      } else {
+        el.setAttribute("data-author", b);
+        el.textContent = b;
+      }
+    });
+    var nickAInput = document.getElementById("settings-nick-a");
+    var nickBInput = document.getElementById("settings-nick-b");
+    if (nickAInput && document.activeElement !== nickAInput) nickAInput.value = a;
+    if (nickBInput && document.activeElement !== nickBInput) nickBInput.value = b;
   }
 
   function applySiteTitle() {
@@ -638,7 +725,7 @@ document.addEventListener("DOMContentLoaded", function () {
         date: item.date || "",
         note: item.note || "",
         pinned: !!item.pinned,
-        // 只有明确设为 true 才进入提醒栏（记录 ≠ 提醒）
+        // 只有明确设为 true 才进入首页「即将到来」（每年庆祝）
         remind: item.remind === true,
         order: typeof item.order === "number" ? item.order : index,
         updatedAt: item.updatedAt || ""
@@ -755,6 +842,12 @@ document.addEventListener("DOMContentLoaded", function () {
         parsed.siteTitle = normalizeSiteTitle(parsed.siteTitle);
         parsed.siteTitleAt = parsed.siteTitleAt || "";
       }
+      parsed.nickA = normalizeNickname(parsed.nickA, "馨宝");
+      parsed.nickB = normalizeNickname(parsed.nickB, "树宝");
+      if (parsed.nickA === parsed.nickB) {
+        parsed.nickB = parsed.nickA === "馨宝" ? "树宝" : "馨宝";
+      }
+      parsed.nicknamesAt = parsed.nicknamesAt || "";
       if (!parsed.tombstones || typeof parsed.tombstones !== "object") {
         parsed.tombstones = {};
       }
@@ -1172,6 +1265,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var sheet = document.getElementById("settings-sheet");
     if (sheet) sheet.hidden = false;
     applySiteTitle();
+    applyAuthorLabels();
     renderPairPanel();
   }
 
@@ -1322,6 +1416,65 @@ document.addEventListener("DOMContentLoaded", function () {
         saveData();
         applySiteTitle();
         showToast("已恢复为并记");
+      });
+    }
+
+    var nicksForm = document.getElementById("settings-nicks-form");
+    if (nicksForm) {
+      nicksForm.addEventListener("submit", function (e) {
+        e.preventDefault();
+        if (!data) data = loadData();
+        ensureNicknames();
+        var oldA = getNickA();
+        var oldB = getNickB();
+        var inputA = document.getElementById("settings-nick-a");
+        var inputB = document.getElementById("settings-nick-b");
+        var nextA = normalizeNickname(inputA && inputA.value, "馨宝");
+        var nextB = normalizeNickname(inputB && inputB.value, "树宝");
+        if (nextA === nextB) {
+          showToast("两个称呼不能一样");
+          return;
+        }
+        migrateAuthorName(oldA, nextA);
+        // 若 B 暂时和 nextA 撞名（极少），先迁到临时再迁到 nextB
+        if (oldB === nextA) {
+          migrateAuthorName(oldB, "__nick_tmp__");
+          data.nickA = nextA;
+          migrateAuthorName("__nick_tmp__", nextB);
+        } else {
+          data.nickA = nextA;
+          migrateAuthorName(oldB, nextB);
+        }
+        data.nickB = nextB;
+        data.nicknamesAt = new Date().toISOString();
+        saveData();
+        applyAuthorLabels();
+        renderAll();
+        showToast("称呼已更新");
+      });
+    }
+    var resetNicksBtn = document.getElementById("btn-reset-nicks");
+    if (resetNicksBtn) {
+      resetNicksBtn.addEventListener("click", function () {
+        if (!data) data = loadData();
+        ensureNicknames();
+        var oldA = getNickA();
+        var oldB = getNickB();
+        migrateAuthorName(oldA, "馨宝");
+        if (oldB === "馨宝") {
+          migrateAuthorName(oldB, "__nick_tmp__");
+          data.nickA = "馨宝";
+          migrateAuthorName("__nick_tmp__", "树宝");
+        } else {
+          data.nickA = "馨宝";
+          migrateAuthorName(oldB, "树宝");
+        }
+        data.nickB = "树宝";
+        data.nicknamesAt = new Date().toISOString();
+        saveData();
+        applyAuthorLabels();
+        renderAll();
+        showToast("已恢复为馨宝与树宝");
       });
     }
 
@@ -1767,6 +1920,7 @@ document.addEventListener("DOMContentLoaded", function () {
     updateDaysTogether();
     fillDefaultDates();
     applySiteTitle();
+    applyAuthorLabels();
     showAppChrome();
     renderPairPanel();
     renderAll();
@@ -2813,6 +2967,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function renderAll() {
     applySiteTitle();
+    applyAuthorLabels();
     ["anniversaries", "events", "sweets", "places", "fights"].forEach(renderList);
     renderReminders();
     renderActivity();
@@ -2932,11 +3087,12 @@ document.addEventListener("DOMContentLoaded", function () {
     var form = document.getElementById("form-sweet");
     form.reset();
     if (item) {
-      form.author.value = item.author || "馨宝";
+      form.author.value = item.author || getNickA();
       form.date.value = item.date || "";
       form.note.value = item.note || "";
     } else {
       form.date.value = todayStr();
+      form.author.value = getNickA();
     }
     setActiveDraft("sweets", editingId);
     restoreDraftToForm("sweets", editingId, form);
@@ -2980,14 +3136,14 @@ document.addEventListener("DOMContentLoaded", function () {
       quote.hidden = !preview;
     }
     if (reply) {
-      form.author.value = reply.author || "馨宝";
+      form.author.value = reply.author || getNickA();
       form.date.value = reply.date || todayStr();
       form.note.value = reply.note || "";
     } else {
-      // 默认选对方：若原文是馨宝则默认树宝，反之亦然
-      if (parent.author === "馨宝") form.author.value = "树宝";
-      else if (parent.author === "树宝") form.author.value = "馨宝";
-      else form.author.value = "馨宝";
+      // 默认选对方
+      if (parent.author === getNickA()) form.author.value = getNickB();
+      else if (parent.author === getNickB()) form.author.value = getNickA();
+      else form.author.value = getNickA();
       form.date.value = todayStr();
     }
     setActiveDraft("sweet-reply", replyEditing.replyId || null, parentId);
