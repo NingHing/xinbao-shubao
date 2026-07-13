@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600&family=Noto+Serif+SC:wght@500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=mist-blue-v1" />
+  <link rel="stylesheet" href="styles.css?v=literary-v1" />
 </head>
 <body class="is-locked" data-view="home">
   <!-- App 顶栏：设置入口（解锁后显示） -->
@@ -172,12 +172,12 @@
   <!-- ========== 门禁：云端登录（有配置时）或本地暗号 ========== -->
   <div id="gate" class="gate" role="dialog" aria-labelledby="gate-title" aria-modal="true">
     <div class="gate-card">
-      <p class="gate-kicker">BINJI · PRIVATE JOURNAL</p>
+      <p class="gate-kicker">二人一本</p>
       <h1 id="gate-title" class="gate-title">并记</h1>
 
       <!-- 云端登录 -->
       <div id="gate-cloud" hidden>
-        <p class="gate-hint">登录后可与另一半同步同一本日记</p>
+        <p class="gate-hint">与另一半共写同一本日记</p>
         <form id="cloud-auth-form" class="gate-form" autocomplete="on">
           <label class="gate-label" for="cloud-email">邮箱</label>
           <input id="cloud-email" class="gate-input" type="email" required placeholder="you@example.com" />
@@ -216,11 +216,12 @@
   <!-- ========== 首页：五个正方形入口 ========== -->
   <div id="view-home" class="view view-home is-active">
     <header class="home-hero">
-      <p class="hero-kicker">OUR PRIVATE JOURNAL</p>
+      <p class="hero-kicker">二人一本</p>
       <h1 class="hero-title" id="site-title">并记</h1>
+      <div class="hero-ornament" aria-hidden="true"></div>
+      <p class="hero-tagline">不催天天打开，只留下你们的节奏</p>
       <p class="hero-sub">从 2025.12.4 开始的故事</p>
       <p class="hero-days">在一起第 <span id="days-together">0</span> 天</p>
-      <p class="privacy-note" id="privacy-note">私密日记 · 点板块进入</p>
     </header>
 
     <section class="home-activity" id="home-activity" hidden aria-label="新动态">
@@ -396,7 +397,7 @@
       <a class="btn-back" href="#home">← 返回首页</a>
       <h2 class="page-title">想对你说</h2>
     </div>
-    <p class="page-desc">那些未说出口的话，先放在这里</p>
+    <p class="page-desc">那些未说出口的话，先安放在这里</p>
     <div class="filter-bar" data-type="sweets">
       <input type="search" class="filter-search" id="filter-q-sweets" placeholder="搜索想说的话…" autocomplete="off" />
       <div class="author-chips" role="group" aria-label="按来自谁筛选">
@@ -539,7 +540,7 @@
       <a class="btn-back" href="#home">← 返回首页</a>
       <h2 class="page-title">和解</h2>
     </div>
-    <p class="page-desc">雨停之后，把靠近的方式写下来</p>
+    <p class="page-desc">雨停之后，把重新靠近的方式写下来</p>
     <div class="filter-bar" data-type="fights">
       <input type="search" class="filter-search" id="filter-q-fights" placeholder="搜索主题、经过、反思…" autocomplete="off" />
       <div class="author-chips" role="group" aria-label="按来自谁筛选">

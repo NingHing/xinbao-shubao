@@ -1,4 +1,4 @@
-/* 并记 · 雾蓝灰（冷静浅色日记气质） */
+/* 并记 · 雾蓝灰 · 简约文艺 */
 
 :root {
   --bg: #f3f6f8;
@@ -22,9 +22,16 @@ body {
   color: var(--ink);
   line-height: 1.75;
   background:
-    radial-gradient(ellipse 85% 50% at 50% -8%, rgba(160, 190, 214, 0.38), transparent 58%),
-    radial-gradient(ellipse 50% 35% at 95% 85%, rgba(180, 196, 210, 0.22), transparent 55%),
-    linear-gradient(180deg, #e8eef4 0%, var(--bg) 42%, #e6ebf0 100%);
+    radial-gradient(ellipse 85% 50% at 50% -8%, rgba(160, 190, 214, 0.4), transparent 58%),
+    radial-gradient(ellipse 48% 32% at 92% 88%, rgba(176, 198, 214, 0.26), transparent 55%),
+    repeating-linear-gradient(
+      -18deg,
+      transparent 0,
+      transparent 11px,
+      rgba(95, 127, 154, 0.018) 11px,
+      rgba(95, 127, 154, 0.018) 12px
+    ),
+    linear-gradient(180deg, #e7eef4 0%, var(--bg) 44%, #e5ebf0 100%);
 }
 
 /* ----- 暗号门 ----- */
@@ -149,36 +156,63 @@ body.is-locked .gate {
 
 .home-hero {
   text-align: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.85rem;
   animation: rise 0.8s ease both;
 }
 
 .hero-kicker {
-  font-size: 0.75rem;
-  letter-spacing: 0.3em;
+  font-size: 0.72rem;
+  letter-spacing: 0.42em;
   color: var(--gold);
-  margin-bottom: 0.7rem;
+  margin-bottom: 0.75rem;
 }
 
 .hero-title {
   font-family: var(--font-display);
-  font-size: clamp(2.4rem, 7vw, 3.4rem);
+  font-size: clamp(2.55rem, 7.5vw, 3.55rem);
   font-weight: 600;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.22em;
   color: var(--ink);
+  text-indent: 0.22em;
+}
+
+.hero-ornament {
+  width: 2.75rem;
+  height: 1px;
+  margin: 0.95rem auto 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(95, 127, 154, 0.75),
+    transparent
+  );
+  animation: fade-in 1s ease 0.25s both;
+}
+
+.hero-tagline {
+  margin: 0.95rem auto 0;
+  max-width: 18em;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  line-height: 1.75;
+  letter-spacing: 0.1em;
+  color: var(--rose-deep);
+  animation: rise 0.9s ease 0.15s both;
 }
 
 .hero-sub {
-  margin-top: 0.6rem;
+  margin-top: 0.85rem;
   color: var(--muted);
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
 }
 
 .hero-days {
-  margin-top: 0.9rem;
+  margin-top: 0.85rem;
   font-family: var(--font-display);
-  font-size: 1.4rem;
+  font-size: 1.35rem;
   color: var(--rose-deep);
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   animation: pulse-soft 3.2s ease-in-out infinite;
 }
 
@@ -841,7 +875,7 @@ body.is-locked .app-settings-btn {
   cursor: pointer;
   font: inherit;
   text-decoration: none;
-  box-shadow: 0 8px 20px rgba(196, 95, 122, 0.08);
+  box-shadow: 0 8px 22px rgba(44, 54, 64, 0.06);
   transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -854,7 +888,7 @@ body.is-locked .app-settings-btn {
   height: 1.35rem;
   padding: 0 0.35rem;
   border-radius: 999px;
-  background: #e11d48;
+  background: #4a6780;
   color: #fff;
   font-size: 0.72rem;
   font-weight: 700;
@@ -862,7 +896,7 @@ body.is-locked .app-settings-btn {
   text-align: center;
   letter-spacing: 0;
   border: 2px solid #fff;
-  box-shadow: 0 2px 8px rgba(190, 18, 60, 0.45);
+  box-shadow: 0 2px 8px rgba(74, 103, 128, 0.35);
   transform: translate(28%, -28%);
   pointer-events: none;
 }
@@ -875,20 +909,20 @@ body.is-locked .app-settings-btn {
 .tile:focus-visible {
   transform: translateY(-3px) scale(1.03);
   border-color: var(--rose);
-  box-shadow: 0 12px 24px rgba(196, 95, 122, 0.14);
+  box-shadow: 0 14px 28px rgba(74, 103, 128, 0.14);
   outline: none;
 }
 
 .tile-num {
-  font-size: 0.65rem;
-  letter-spacing: 0.16em;
+  font-size: 0.62rem;
+  letter-spacing: 0.22em;
   color: var(--gold);
 }
 
 .tile-name {
   font-family: var(--font-display);
   font-size: clamp(0.85rem, 1.8vw, 1.1rem);
-  letter-spacing: 0.06em;
+  letter-spacing: 0.1em;
   font-weight: 600;
   text-align: center;
   line-height: 1.25;
@@ -930,15 +964,18 @@ body.is-locked .app-settings-btn {
 .page-title {
   font-family: var(--font-display);
   font-size: 1.85rem;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.16em;
   color: var(--rose-deep);
   font-weight: 600;
 }
 
 .page-desc {
   color: var(--muted);
-  margin-bottom: 1.2rem;
-  font-size: 0.95rem;
+  margin-bottom: 1.35rem;
+  font-family: var(--font-display);
+  font-size: 0.92rem;
+  letter-spacing: 0.06em;
+  line-height: 1.7;
 }
 
 .filter-bar {
@@ -1104,9 +1141,11 @@ body.is-locked .app-settings-btn {
 }
 
 .entry-note--sweet {
-  margin-top: 0.65rem;
-  font-size: 1.02rem;
-  line-height: 1.8;
+  margin-top: 0.7rem;
+  font-family: var(--font-display);
+  font-size: 1.06rem;
+  line-height: 1.9;
+  letter-spacing: 0.02em;
 }
 
 .entry-item--sweet .entry-top {
