@@ -720,13 +720,64 @@ document.addEventListener("DOMContentLoaded", function () {
       });
     }
 
+    var softRefreshBtn = document.getElementById("btn-soft-refresh");
+    if (softRefreshBtn) {
+      softRefreshBtn.addEventListener("click", function () {
+        softRefreshBtn.disabled = true;
+        showToast("正在同步…");
+        var done = function (msg) {
+          softRefreshBtn.disabled = false;
+          showToast(msg || "已同步");
+        };
+        try {
+          if (!window.XinbaoCloud || !XinbaoCloud.canSync()) {
+            data = loadData();
+            applySiteTitle();
+            renderAll();
+            renderPairPanel();
+            done("已刷新本机内容");
+            return;
+          }
+          var localSnapshot = JSON.parse(JSON.stringify(data || loadData()));
+          XinbaoCloud.pullJournal()
+            .then(function (remote) {
+              if (remote) {
+                data = applyRecoveredSweets(
+                  mergeJournalPayload(localSnapshot, remote)
+                );
+              } else {
+                data = purgeDeleted(data || localSnapshot);
+              }
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+              applySiteTitle();
+              renderAll();
+              renderPairPanel();
+              return XinbaoCloud.pushJournal(data);
+            })
+            .then(function () {
+              done("已同步最新内容");
+            })
+            .catch(function (err) {
+              console.warn(err);
+              done("同步失败，请稍后再试");
+            });
+        } catch (err) {
+          softRefreshBtn.disabled = false;
+          showToast("刷新失败");
+        }
+      });
+    }
+
     var reloadBtn = document.getElementById("btn-reload-app");
     if (reloadBtn) {
       reloadBtn.addEventListener("click", function () {
-        showToast("正在刷新…");
+        showToast("正在重新加载…");
+        // 立刻跳转并带时间戳，减少手机端卡在旧缓存上的等待感
+        var url = location.href.split("#")[0].split("?")[0] + "?t=" + Date.now();
+        var hash = location.hash || "#home";
         setTimeout(function () {
-          location.reload();
-        }, 200);
+          location.replace(url + hash);
+        }, 50);
       });
     }
 

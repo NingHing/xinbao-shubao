@@ -65,9 +65,10 @@
 
       <section class="settings-section" aria-labelledby="settings-app-heading">
         <h3 id="settings-app-heading" class="settings-section-title">应用</h3>
-        <p class="settings-hint">主屏幕打开时没有浏览器刷新键，需要更新页面时点这里。</p>
+        <p class="settings-hint">日常点「同步最新」即可。只有页面异常或更新了新功能时，再点「重新加载」。</p>
         <div class="settings-actions">
-          <button type="button" class="btn" id="btn-reload-app">刷新并记</button>
+          <button type="button" class="btn" id="btn-soft-refresh">同步最新</button>
+          <button type="button" class="btn btn-ghost" id="btn-reload-app">重新加载页面</button>
         </div>
       </section>
 
@@ -658,11 +659,11 @@
     })();
   </script>
   <script src="seed-data.js?v=20260713-recover-sweets"></script>
-  <script src="script.js?v=reload-btn"></script>
+  <script src="script.js?v=soft-refresh"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", function () {
-        navigator.serviceWorker.register("./sw.js").catch(function (err) {
+        navigator.serviceWorker.register("./sw.js?v=2").catch(function (err) {
           console.warn("SW 注册失败", err);
         });
       });
