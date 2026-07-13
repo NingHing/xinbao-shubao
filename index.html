@@ -431,7 +431,7 @@
               </label>
             </div>
           </fieldset>
-          <label class="full">日期<input name="date" type="date" required /></label>
+          <label class="full">日期时间<input name="date" type="datetime-local" required /></label>
           <label class="full">内容<textarea name="note" rows="3" required placeholder="想说的话写在这里…"></textarea></label>
           <div class="modal-actions">
             <button type="button" class="btn btn-ghost" data-close-sweet-modal>取消</button>
@@ -464,7 +464,7 @@
               </label>
             </div>
           </fieldset>
-          <label class="full">日期<input name="date" type="date" required /></label>
+          <label class="full">日期时间<input name="date" type="datetime-local" required /></label>
           <label class="full">回复内容<textarea name="note" rows="3" required placeholder="想回的话写在这里…"></textarea></label>
           <div class="modal-actions">
             <button type="button" class="btn btn-ghost" data-close-sweet-reply-modal>取消</button>
@@ -574,7 +574,7 @@
               </label>
             </div>
           </fieldset>
-          <label class="full">日期<input name="date" type="date" required /></label>
+          <label class="full">日期时间<input name="date" type="datetime-local" required /></label>
           <label class="full">主题<input name="title" type="text" required placeholder="关于什么" /></label>
           <label class="full">经过<textarea name="note" rows="3" placeholder="当时发生了什么（可选）"></textarea></label>
           <label class="full">怎么和好的<textarea name="resolve" rows="2" placeholder="后来怎么解开的？"></textarea></label>
@@ -799,7 +799,7 @@
     })();
   </script>
   <script src="seed-data.js?v=20260713-recover-sweets"></script>
-  <script src="script.js?v=home-scroll-v1"></script>
+  <script src="script.js?v=datetime-v1"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", function () {

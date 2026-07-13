@@ -3116,7 +3116,7 @@ document.addEventListener("DOMContentLoaded", function () {
           (item.author ? "来自 " + escapeText(item.author) : "") +
           "</p>" +
           '<p class="entry-date">' +
-          escapeText(item.date || "") +
+          escapeText(formatDateTimeDisplay(item.date || "")) +
           "</p>" +
           "</div>" +
           (sweetBody
@@ -3147,7 +3147,7 @@ document.addEventListener("DOMContentLoaded", function () {
         escapeText(item.title || "（无标题）") +
         "</p>" +
         '<p class="entry-date">' +
-        escapeText(item.date || "") +
+        escapeText(formatDateTimeDisplay(item.date || "")) +
         "</p>" +
         "</div>" +
         meta +
@@ -3258,7 +3258,7 @@ document.addEventListener("DOMContentLoaded", function () {
             '<p class="sweet-reply-meta">' +
             escapeText(
               (reply.author ? reply.author : "回复") +
-                (reply.date ? " · " + reply.date : "")
+                (reply.date ? " · " + formatDateTimeDisplay(reply.date) : "")
             ) +
             "</p>" +
             '<div class="sweet-reply-actions">' +
@@ -3306,9 +3306,47 @@ document.addEventListener("DOMContentLoaded", function () {
     return d.getFullYear() + "-" + m + "-" + day;
   }
 
+  function nowDateTimeStr() {
+    var d = new Date();
+    var m = String(d.getMonth() + 1).padStart(2, "0");
+    var day = String(d.getDate()).padStart(2, "0");
+    var hh = String(d.getHours()).padStart(2, "0");
+    var mm = String(d.getMinutes()).padStart(2, "0");
+    return d.getFullYear() + "-" + m + "-" + day + "T" + hh + ":" + mm;
+  }
+
+  /** 写入表单 datetime-local；旧数据只有日期时补 00:00 */
+  function toDateTimeInputValue(raw) {
+    if (!raw) return nowDateTimeStr();
+    var s = String(raw).trim().replace(" ", "T");
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s + "T00:00";
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s)) return s.slice(0, 16);
+    return nowDateTimeStr();
+  }
+
+  function normalizeDateTimeStored(raw) {
+    if (!raw) return "";
+    var s = String(raw).trim().replace(" ", "T");
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s)) return s.slice(0, 16);
+    return s;
+  }
+
+  /** 列表展示：有时分则显示「日期 时:分」，旧记录仍只显示日期 */
+  function formatDateTimeDisplay(raw) {
+    if (!raw) return "";
+    var s = String(raw).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    var m = s.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/);
+    if (m) return m[1] + " " + m[2];
+    return s.replace("T", " ");
+  }
+
   function fillDefaultDates() {
     document.querySelectorAll('input[name="date"]').forEach(function (input) {
-      if (!input.value) input.value = todayStr();
+      if (input.value) return;
+      if (input.type === "datetime-local") input.value = nowDateTimeStr();
+      else input.value = todayStr();
     });
   }
 
@@ -3420,11 +3458,11 @@ document.addEventListener("DOMContentLoaded", function () {
     form.reset();
     applyAuthorLabels();
     if (item) {
-      form.date.value = item.date || "";
+      form.date.value = toDateTimeInputValue(item.date);
       form.note.value = item.note || "";
       setVoiceFromAuthor(form, item.author || getMyNick());
     } else {
-      form.date.value = todayStr();
+      form.date.value = nowDateTimeStr();
       setVoiceFromAuthor(form, getMyNick());
     }
     syncVoiceToAuthor(form);
@@ -3485,11 +3523,11 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (reply) {
-      form.date.value = reply.date || todayStr();
+      form.date.value = toDateTimeInputValue(reply.date || nowDateTimeStr());
       form.note.value = reply.note || "";
       setVoiceFromAuthor(form, reply.author || getMyNick());
     } else {
-      form.date.value = todayStr();
+      form.date.value = nowDateTimeStr();
       setVoiceFromAuthor(form, getMyNick());
     }
     syncVoiceToAuthor(form);
@@ -3549,14 +3587,14 @@ document.addEventListener("DOMContentLoaded", function () {
     form.reset();
     applyAuthorLabels();
     if (item) {
-      form.date.value = item.date || "";
+      form.date.value = toDateTimeInputValue(item.date);
       form.title.value = item.title || "";
       form.note.value = item.note || "";
       form.resolve.value = item.resolve || "";
       form.reflection.value = item.reflection || "";
       setVoiceFromAuthor(form, item.author || getMyNick());
     } else {
-      form.date.value = todayStr();
+      form.date.value = nowDateTimeStr();
       setVoiceFromAuthor(form, getMyNick());
     }
     syncVoiceToAuthor(form);
@@ -3665,7 +3703,7 @@ document.addEventListener("DOMContentLoaded", function () {
       if (replyToId && !findReply(parent, replyToId)) replyToId = "";
       var payload = {
         author: (fd.get("author") || "").toString(),
-        date: (fd.get("date") || "").toString(),
+        date: normalizeDateTimeStored(fd.get("date") || ""),
         note: (fd.get("note") || "").toString().trim(),
         replyToId: replyToId
       };
@@ -4372,6 +4410,7 @@ document.addEventListener("DOMContentLoaded", function () {
         syncVoiceToAuthor(form);
         fields.author = (form.elements.author && form.elements.author.value) || getMyNick();
         fields.title = "";
+        fields.date = normalizeDateTimeStored(fields.date);
       }
 
       if (type === "fights") {
@@ -4380,6 +4419,7 @@ document.addEventListener("DOMContentLoaded", function () {
         fields.reflection = (fd.get("reflection") || "").toString().trim();
         fields.author =
           (form.elements.author && form.elements.author.value) || getMyNick();
+        fields.date = normalizeDateTimeStored(fields.date);
       }
 
       if (isEdit) {
