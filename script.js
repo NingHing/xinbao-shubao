@@ -2772,9 +2772,7 @@ document.addEventListener("DOMContentLoaded", function () {
       form.date.value = todayStr();
     }
     setActiveDraft("anniversaries", editingId);
-    if (restoreDraftToForm("anniversaries", editingId, form)) {
-      showToast("已恢复草稿");
-    }
+    restoreDraftToForm("anniversaries", editingId, form);
     snapshotDraftBaseline(form);
     modal.hidden = false;
     form.title.focus();
@@ -2838,9 +2836,7 @@ document.addEventListener("DOMContentLoaded", function () {
       form.ongoing.checked = false;
     }
     setActiveDraft("events", editingId);
-    if (restoreDraftToForm("events", editingId, form)) {
-      showToast("已恢复草稿");
-    }
+    restoreDraftToForm("events", editingId, form);
     syncEventOngoingUI();
     snapshotDraftBaseline(form);
     eventModal.hidden = false;
@@ -2860,9 +2856,7 @@ document.addEventListener("DOMContentLoaded", function () {
       form.date.value = todayStr();
     }
     setActiveDraft("sweets", editingId);
-    if (restoreDraftToForm("sweets", editingId, form)) {
-      showToast("已恢复草稿");
-    }
+    restoreDraftToForm("sweets", editingId, form);
     snapshotDraftBaseline(form);
     sweetModal.hidden = false;
     form.note.focus();
@@ -2914,16 +2908,12 @@ document.addEventListener("DOMContentLoaded", function () {
       form.date.value = todayStr();
     }
     setActiveDraft("sweet-reply", replyEditing.replyId || null, parentId);
-    if (
-      restoreDraftToForm(
-        "sweet-reply",
-        replyEditing.replyId || null,
-        form,
-        parentId
-      )
-    ) {
-      showToast("已恢复草稿");
-    }
+    restoreDraftToForm(
+      "sweet-reply",
+      replyEditing.replyId || null,
+      form,
+      parentId
+    );
     snapshotDraftBaseline(form);
     sweetReplyModal.hidden = false;
     form.note.focus();
@@ -2970,9 +2960,7 @@ document.addEventListener("DOMContentLoaded", function () {
       form.date.value = todayStr();
     }
     setActiveDraft("fights", editingId);
-    if (restoreDraftToForm("fights", editingId, form)) {
-      showToast("已恢复草稿");
-    }
+    restoreDraftToForm("fights", editingId, form);
     snapshotDraftBaseline(form);
     fightModal.hidden = false;
     form.title.focus();
@@ -3271,9 +3259,7 @@ document.addEventListener("DOMContentLoaded", function () {
       pendingPlacePhotos = [];
     }
     setActiveDraft("places", editingId);
-    if (restoreDraftToForm("places", editingId, form)) {
-      showToast("已恢复草稿");
-    }
+    restoreDraftToForm("places", editingId, form);
     renderPlacePreview();
     snapshotDraftBaseline(form, pendingPlacePhotos);
     placeModal.hidden = false;
