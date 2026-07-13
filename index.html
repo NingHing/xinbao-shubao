@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="icons/icon-180.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=tile-rail" />
+  <link rel="stylesheet" href="styles.css?v=tiles-original" />
 </head>
 <body class="is-locked" data-view="home">
   <!-- App 顶栏：设置入口（解锁后显示） -->
@@ -156,33 +156,8 @@
       <h1 class="hero-title" id="site-title">并记</h1>
       <p class="hero-sub">从 2025.12.4 开始的故事</p>
       <p class="hero-days">在一起第 <span id="days-together">0</span> 天</p>
-      <p class="privacy-note" id="privacy-note">私密日记 · 左右滑动进入栏目</p>
+      <p class="privacy-note" id="privacy-note">私密日记 · 点板块进入</p>
     </header>
-
-    <section class="tile-rail" aria-label="功能入口">
-      <nav class="tile-grid" aria-label="栏目">
-        <a class="tile" href="#anniversaries">
-          <span class="tile-num">01</span>
-          <span class="tile-name">纪念日</span>
-        </a>
-        <a class="tile" href="#events">
-          <span class="tile-num">02</span>
-          <span class="tile-name">重要的事</span>
-        </a>
-        <a class="tile" href="#sweets">
-          <span class="tile-num">03</span>
-          <span class="tile-name">想对你说</span>
-        </a>
-        <a class="tile" href="#places">
-          <span class="tile-num">04</span>
-          <span class="tile-name">足迹</span>
-        </a>
-        <a class="tile" href="#fights">
-          <span class="tile-num">05</span>
-          <span class="tile-name">和解</span>
-        </a>
-      </nav>
-    </section>
 
     <section class="home-reminders" aria-label="纪念日提醒">
       <div class="reminders-head">
@@ -191,6 +166,29 @@
       </div>
       <ul class="reminder-list" id="list-reminders"></ul>
     </section>
+
+    <nav class="tile-grid" aria-label="功能入口">
+      <a class="tile" href="#anniversaries">
+        <span class="tile-num">01</span>
+        <span class="tile-name">纪念日</span>
+      </a>
+      <a class="tile" href="#events">
+        <span class="tile-num">02</span>
+        <span class="tile-name">重要的事</span>
+      </a>
+      <a class="tile" href="#sweets">
+        <span class="tile-num">03</span>
+        <span class="tile-name">想对你说</span>
+      </a>
+      <a class="tile" href="#places">
+        <span class="tile-num">04</span>
+        <span class="tile-name">足迹</span>
+      </a>
+      <a class="tile" href="#fights">
+        <span class="tile-num">05</span>
+        <span class="tile-name">和解</span>
+      </a>
+    </nav>
   </div>
 
 
