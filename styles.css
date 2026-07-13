@@ -1,15 +1,15 @@
-/* 并记 · 雾玫瑰 · 圆润柔和耐看粉 */
+/* 并记 · 雾玫瑰加深 · 圆润柔和 */
 
 :root {
-  --bg: #f8f3f4;
+  --bg: #f6eef1;
   --ink: #3a2f34;
-  --muted: #8a7580;
-  --rose: #c48996;
-  --rose-deep: #a86d7c;
-  --gold: #c4a090;
-  --line: rgba(196, 137, 150, 0.3);
-  --panel: rgba(255, 252, 253, 0.94);
-  --card: #fffcfd;
+  --muted: #8a6f7a;
+  --rose: #c46b82;
+  --rose-deep: #a24f68;
+  --gold: #c4927e;
+  --line: rgba(196, 107, 130, 0.34);
+  --panel: rgba(255, 250, 252, 0.95);
+  --card: #fff9fb;
   --font-display: "Noto Serif SC", "Songti SC", "STSong", serif;
   --font-body: "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   --radius-sm: 16px;
@@ -26,16 +26,16 @@ body {
   color: var(--ink);
   line-height: 1.75;
   background:
-    radial-gradient(ellipse 85% 50% at 50% -8%, rgba(228, 186, 198, 0.42), transparent 58%),
-    radial-gradient(ellipse 48% 32% at 92% 88%, rgba(220, 198, 186, 0.24), transparent 55%),
+    radial-gradient(ellipse 85% 50% at 50% -8%, rgba(220, 150, 170, 0.48), transparent 58%),
+    radial-gradient(ellipse 48% 32% at 92% 88%, rgba(214, 178, 164, 0.28), transparent 55%),
     repeating-linear-gradient(
       -18deg,
       transparent 0,
       transparent 11px,
-      rgba(196, 137, 150, 0.02) 11px,
-      rgba(196, 137, 150, 0.02) 12px
+      rgba(196, 107, 130, 0.028) 11px,
+      rgba(196, 107, 130, 0.028) 12px
     ),
-    linear-gradient(180deg, #f3e9ec 0%, var(--bg) 44%, #f1ebe7 100%);
+    linear-gradient(180deg, #efdde4 0%, var(--bg) 44%, #f0e6e2 100%);
 }
 
 /* ----- 暗号门 ----- */
@@ -113,7 +113,7 @@ body.is-locked .gate {
 }
 
 .gate-input:focus {
-  outline: 2px solid rgba(196, 137, 150, 0.35);
+  outline: 2px solid rgba(196, 107, 130, 0.35);
   border-color: var(--rose);
 }
 
@@ -187,7 +187,7 @@ body.is-locked .gate {
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(196, 137, 150, 0.75),
+    rgba(196, 107, 130, 0.75),
     transparent
   );
   animation: fade-in 1s ease 0.25s both;
@@ -236,7 +236,7 @@ body.is-locked .gate {
   z-index: 40;
   width: 2.6rem;
   height: 2.6rem;
-  border: 1px solid rgba(196, 137, 150, 0.35);
+  border: 1px solid rgba(196, 107, 130, 0.35);
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.92);
   color: var(--rose-deep);
@@ -279,8 +279,8 @@ body.is-locked .app-settings-btn {
   width: min(22rem, 92vw);
   height: 100%;
   overflow: auto;
-  background: #faf5f6;
-  border-left: 1px solid rgba(196, 137, 150, 0.22);
+  background: #f8eef2;
+  border-left: 1px solid rgba(196, 107, 130, 0.22);
   padding: 1.1rem 1rem 2rem;
   box-shadow: -12px 0 36px rgba(58, 47, 52, 0.12);
   animation: settings-slide-in 0.22s ease;
@@ -320,7 +320,7 @@ body.is-locked .app-settings-btn {
   margin-bottom: 1.25rem;
   padding: 0.9rem 0.85rem 1rem;
   background: rgba(255, 255, 255, 0.78);
-  border: 1px solid rgba(196, 137, 150, 0.18);
+  border: 1px solid rgba(196, 107, 130, 0.18);
   border-radius: 22px;
 }
 
@@ -350,7 +350,7 @@ body.is-locked .app-settings-btn {
 }
 
 .settings-input {
-  border: 1px solid rgba(196, 137, 150, 0.28);
+  border: 1px solid rgba(196, 107, 130, 0.28);
   border-radius: 18px;
   padding: 0.55rem 0.75rem;
   font: inherit;
@@ -379,7 +379,7 @@ body.is-locked .app-settings-btn {
   margin: 0 0 1.2rem;
   padding: 0.95rem 1rem 1rem;
   background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(196, 137, 150, 0.22);
+  border: 1px solid rgba(196, 107, 130, 0.22);
   border-radius: 24px;
 }
 
@@ -447,7 +447,7 @@ body.is-locked .app-settings-btn {
 }
 
 .pair-join input {
-  border: 1px solid rgba(196, 137, 150, 0.28);
+  border: 1px solid rgba(196, 107, 130, 0.28);
   border-radius: 999px;
   padding: 0.55rem 0.85rem;
   font: inherit;
@@ -462,7 +462,7 @@ body.is-locked .app-settings-btn {
   text-align: left;
   padding: 0.75rem 0.8rem;
   border-radius: 22px;
-  background: rgba(248, 236, 240, 0.9);
+  background: rgba(246, 226, 233, 0.9);
   color: var(--ink);
   line-height: 1.5;
 }
@@ -537,7 +537,7 @@ body.is-locked .app-settings-btn {
   margin: 0 0 1.2rem;
   padding: 0.9rem 1rem 1rem;
   background: rgba(255, 255, 255, 0.8);
-  border: 1px solid rgba(196, 137, 150, 0.28);
+  border: 1px solid rgba(196, 107, 130, 0.28);
   border-radius: 24px;
   animation: rise 0.8s ease both;
 }
@@ -585,12 +585,12 @@ body.is-locked .app-settings-btn {
   color: inherit;
   padding: 0.65rem 0.75rem;
   border-radius: 20px;
-  background: rgba(248, 236, 240, 0.9);
-  border: 1px solid rgba(196, 137, 150, 0.16);
+  background: rgba(246, 226, 233, 0.9);
+  border: 1px solid rgba(196, 107, 130, 0.16);
 }
 
 .activity-item:active {
-  background: rgba(236, 214, 222, 0.95);
+  background: rgba(232, 196, 208, 0.95);
 }
 
 .activity-module {
@@ -633,7 +633,7 @@ body.is-locked .app-settings-btn {
 
 .activity-toggle:hover,
 .activity-toggle:focus-visible {
-  background: rgba(196, 137, 150, 0.1);
+  background: rgba(196, 107, 130, 0.1);
   outline: none;
 }
 
@@ -642,7 +642,7 @@ body.is-locked .app-settings-btn {
   margin: 0 0 1.35rem;
   padding: 0.95rem 1rem 0.85rem;
   background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(196, 137, 150, 0.22);
+  border: 1px solid rgba(196, 107, 130, 0.22);
   border-radius: 24px;
   animation: rise 0.8s ease 0.05s both;
 }
@@ -682,17 +682,17 @@ body.is-locked .app-settings-btn {
   padding: 0.55rem 0.7rem;
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.7);
-  border: 1px solid rgba(196, 137, 150, 0.12);
+  border: 1px solid rgba(196, 107, 130, 0.12);
 }
 
 .reminder-item.is-soon {
-  border-color: rgba(196, 137, 150, 0.35);
-  background: rgba(248, 236, 240, 0.9);
+  border-color: rgba(196, 107, 130, 0.35);
+  background: rgba(246, 226, 233, 0.9);
 }
 
 .reminder-item.is-today {
-  border-color: rgba(168, 109, 124, 0.45);
-  background: linear-gradient(165deg, rgba(252, 245, 247, 0.95), rgba(240, 224, 230, 0.95));
+  border-color: rgba(162, 79, 104, 0.45);
+  background: linear-gradient(165deg, rgba(252, 240, 244, 0.95), rgba(236, 210, 220, 0.95));
 }
 
 .reminder-name {
@@ -748,7 +748,7 @@ body.is-locked .app-settings-btn {
   font: inherit;
   color: var(--ink);
   background: #fff;
-  border: 1px solid rgba(196, 137, 150, 0.28);
+  border: 1px solid rgba(196, 107, 130, 0.28);
   border-radius: 18px;
   padding: 0.65rem 0.75rem;
 }
@@ -756,7 +756,7 @@ body.is-locked .app-settings-btn {
 .date-range-row input:focus {
   outline: none;
   border-color: var(--rose);
-  box-shadow: 0 0 0 3px rgba(196, 137, 150, 0.14);
+  box-shadow: 0 0 0 3px rgba(196, 107, 130, 0.14);
 }
 
 @media (max-width: 520px) {
@@ -782,13 +782,13 @@ body.is-locked .app-settings-btn {
 
 #event-date-end:disabled {
   opacity: 0.45;
-  background: #f0e6ea;
+  background: #ebdce2;
 }
 
 .btn-mini--accent {
   color: var(--rose-deep);
-  border-color: rgba(196, 137, 150, 0.45);
-  background: rgba(196, 137, 150, 0.08);
+  border-color: rgba(196, 107, 130, 0.45);
+  background: rgba(196, 107, 130, 0.08);
 }
 
 .btn-mini--accent:hover {
@@ -803,7 +803,7 @@ body.is-locked .app-settings-btn {
 }
 
 .entry-item.is-remind {
-  border-color: rgba(168, 109, 124, 0.28);
+  border-color: rgba(162, 79, 104, 0.28);
 }
 
 .remind-badge {
@@ -855,7 +855,7 @@ body.is-locked .app-settings-btn {
 .anni-kind-chip:has(input:checked) {
   border-color: var(--rose-deep);
   color: var(--rose-deep);
-  background: rgba(168, 109, 124, 0.08);
+  background: rgba(162, 79, 104, 0.08);
 }
 
 .entry-remind {
@@ -905,7 +905,7 @@ body.is-locked .app-settings-btn {
   gap: 0.3rem;
   border: 1px solid var(--line);
   border-radius: 22px;
-  background: linear-gradient(165deg, #ffffff 0%, #f3e8ec 100%);
+  background: linear-gradient(165deg, #ffffff 0%, #efd8e0 100%);
   color: var(--ink);
   cursor: pointer;
   font: inherit;
@@ -923,7 +923,7 @@ body.is-locked .app-settings-btn {
   height: 1.35rem;
   padding: 0 0.35rem;
   border-radius: 999px;
-  background: #a86d7c;
+  background: #a24f68;
   color: #fff;
   font-size: 0.72rem;
   font-weight: 700;
@@ -931,7 +931,7 @@ body.is-locked .app-settings-btn {
   text-align: center;
   letter-spacing: 0;
   border: 2px solid #fff;
-  box-shadow: 0 2px 8px rgba(168, 109, 124, 0.35);
+  box-shadow: 0 2px 8px rgba(162, 79, 104, 0.35);
   transform: translate(28%, -28%);
   pointer-events: none;
 }
@@ -944,7 +944,7 @@ body.is-locked .app-settings-btn {
 .tile:focus-visible {
   transform: translateY(-4px) scale(1.03);
   border-color: var(--rose);
-  box-shadow: 0 16px 32px rgba(168, 109, 124, 0.14);
+  box-shadow: 0 16px 32px rgba(162, 79, 104, 0.14);
   outline: none;
 }
 
@@ -993,7 +993,7 @@ body.is-locked .app-settings-btn {
 }
 
 .btn-back:hover {
-  background: #f3e8ec;
+  background: #efd8e0;
 }
 
 .page-title {
@@ -1025,7 +1025,7 @@ body.is-locked .app-settings-btn {
   font: inherit;
   color: var(--ink);
   background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(196, 137, 150, 0.28);
+  border: 1px solid rgba(196, 107, 130, 0.28);
   border-radius: 999px;
   padding: 0.55rem 0.95rem;
 }
@@ -1033,11 +1033,11 @@ body.is-locked .app-settings-btn {
 .filter-search:focus {
   outline: none;
   border-color: var(--rose);
-  box-shadow: 0 0 0 3px rgba(196, 137, 150, 0.14);
+  box-shadow: 0 0 0 3px rgba(196, 107, 130, 0.14);
 }
 
 .filter-search::placeholder {
-  color: rgba(138, 117, 128, 0.75);
+  color: rgba(138, 111, 122, 0.75);
 }
 
 .author-chips {
@@ -1052,7 +1052,7 @@ body.is-locked .app-settings-btn {
   line-height: 1;
   color: var(--muted);
   background: rgba(255, 255, 255, 0.85);
-  border: 1px solid rgba(196, 137, 150, 0.22);
+  border: 1px solid rgba(196, 107, 130, 0.22);
   border-radius: 999px;
   padding: 0.38rem 0.7rem;
   cursor: pointer;
@@ -1061,14 +1061,14 @@ body.is-locked .app-settings-btn {
 
 .author-chip:hover {
   color: var(--rose-deep);
-  border-color: rgba(196, 137, 150, 0.45);
+  border-color: rgba(196, 107, 130, 0.45);
 }
 
 .author-chip.is-active {
   color: #fff;
-  background: linear-gradient(165deg, #c48996 0%, #a86d7c 100%);
+  background: linear-gradient(165deg, #c46b82 0%, #a24f68 100%);
   border-color: transparent;
-  box-shadow: 0 4px 12px rgba(168, 109, 124, 0.22);
+  box-shadow: 0 4px 12px rgba(162, 79, 104, 0.22);
 }
 
 .entry-form {
@@ -1080,7 +1080,7 @@ body.is-locked .app-settings-btn {
   border: 1px solid var(--line);
   border-radius: 24px;
   margin-bottom: 1.2rem;
-  box-shadow: 0 8px 22px rgba(168, 109, 124, 0.06);
+  box-shadow: 0 8px 22px rgba(162, 79, 104, 0.06);
 }
 
 .entry-form label {
@@ -1099,7 +1099,7 @@ body.is-locked .app-settings-btn {
   font: inherit;
   color: var(--ink);
   background: #fff;
-  border: 1px solid rgba(196, 137, 150, 0.28);
+  border: 1px solid rgba(196, 107, 130, 0.28);
   border-radius: 18px;
   padding: 0.65rem 0.75rem;
 }
@@ -1109,7 +1109,7 @@ body.is-locked .app-settings-btn {
 .entry-form select:focus {
   outline: none;
   border-color: var(--rose);
-  box-shadow: 0 0 0 3px rgba(196, 137, 150, 0.14);
+  box-shadow: 0 0 0 3px rgba(196, 107, 130, 0.14);
 }
 
 .btn {
@@ -1126,7 +1126,7 @@ body.is-locked .app-settings-btn {
 }
 
 .btn:hover {
-  background: #966274;
+  background: #8a4560;
 }
 
 .entry-list {
@@ -1139,9 +1139,9 @@ body.is-locked .app-settings-btn {
 .entry-item {
   padding: 1rem 1.05rem;
   background: var(--card);
-  border: 1px solid rgba(196, 137, 150, 0.18);
+  border: 1px solid rgba(196, 107, 130, 0.18);
   border-radius: 24px;
-  box-shadow: 0 6px 18px rgba(168, 109, 124, 0.06);
+  box-shadow: 0 6px 18px rgba(162, 79, 104, 0.06);
 }
 
 .entry-top {
@@ -1198,14 +1198,14 @@ body.is-locked .app-settings-btn {
 .sweet-reply {
   padding: 0.65rem 0.75rem;
   border-radius: 20px;
-  background: rgba(248, 236, 240, 0.85);
-  border-left: 3px solid rgba(196, 137, 150, 0.55);
+  background: rgba(246, 226, 233, 0.85);
+  border-left: 3px solid rgba(196, 107, 130, 0.55);
 }
 
 .sweet-reply--nested {
   margin-left: calc(var(--reply-depth, 1) * 0.85rem);
-  background: rgba(248, 236, 240, 0.55);
-  border-left-color: rgba(196, 137, 150, 0.35);
+  background: rgba(246, 226, 233, 0.55);
+  border-left-color: rgba(196, 107, 130, 0.35);
 }
 
 .sweet-reply-top {
@@ -1249,7 +1249,7 @@ body.is-locked .app-settings-btn {
   margin: 0 0 0.85rem;
   padding: 0.65rem 0.75rem;
   border-radius: 20px;
-  background: rgba(248, 236, 240, 0.9);
+  background: rgba(246, 226, 233, 0.9);
   color: var(--muted);
   font-size: 0.88rem;
   line-height: 1.5;
@@ -1258,7 +1258,7 @@ body.is-locked .app-settings-btn {
 .entry-resolve {
   margin-top: 0.55rem;
   padding-top: 0.55rem;
-  border-top: 1px dashed rgba(196, 137, 150, 0.3);
+  border-top: 1px dashed rgba(196, 107, 130, 0.3);
   color: var(--muted);
   font-size: 0.92rem;
 }
@@ -1270,7 +1270,7 @@ body.is-locked .app-settings-btn {
   font-size: 0.8rem;
   color: var(--muted);
   background: transparent;
-  border: 1px solid rgba(138, 117, 128, 0.35);
+  border: 1px solid rgba(138, 111, 122, 0.35);
   border-radius: 999px;
   padding: 0.25rem 0.7rem;
   cursor: pointer;
@@ -1309,7 +1309,7 @@ body.is-locked .app-settings-btn {
   line-height: 1;
   color: var(--muted);
   background: rgba(255, 255, 255, 0.85);
-  border: 1px solid rgba(196, 137, 150, 0.22);
+  border: 1px solid rgba(196, 107, 130, 0.22);
   border-radius: 999px;
   padding: 0.38rem 0.7rem;
   cursor: pointer;
@@ -1318,20 +1318,20 @@ body.is-locked .app-settings-btn {
 
 .sort-chip:hover {
   color: var(--rose-deep);
-  border-color: rgba(196, 137, 150, 0.45);
+  border-color: rgba(196, 107, 130, 0.45);
   transform: translateY(-1px);
 }
 
 .sort-chip.is-active {
   color: #fff;
-  background: linear-gradient(165deg, #c48996 0%, #a86d7c 100%);
+  background: linear-gradient(165deg, #c46b82 0%, #a24f68 100%);
   border-color: transparent;
-  box-shadow: 0 4px 12px rgba(168, 109, 124, 0.22);
+  box-shadow: 0 4px 12px rgba(162, 79, 104, 0.22);
 }
 
 .entry-item.is-pinned {
-  border-color: rgba(168, 109, 124, 0.4);
-  box-shadow: 0 8px 22px rgba(168, 109, 124, 0.1);
+  border-color: rgba(162, 79, 104, 0.4);
+  box-shadow: 0 8px 22px rgba(162, 79, 104, 0.1);
 }
 
 .pin-badge {
@@ -1365,7 +1365,7 @@ body.is-locked .app-settings-btn {
   font-size: 0.78rem;
   color: var(--muted);
   background: transparent;
-  border: 1px solid rgba(138, 117, 128, 0.35);
+  border: 1px solid rgba(138, 111, 122, 0.35);
   border-radius: 999px;
   padding: 0.25rem 0.65rem;
   cursor: pointer;
@@ -1377,8 +1377,8 @@ body.is-locked .app-settings-btn {
 }
 
 .btn-delete:hover {
-  color: #966274;
-  border-color: #966274;
+  color: #8a4560;
+  border-color: #8a4560;
 }
 
 .fab {
@@ -1394,13 +1394,13 @@ body.is-locked .app-settings-btn {
   font-size: 1.8rem;
   line-height: 1;
   cursor: pointer;
-  box-shadow: 0 12px 30px rgba(168, 109, 124, 0.24);
+  box-shadow: 0 12px 30px rgba(162, 79, 104, 0.24);
   z-index: 40;
   transition: transform 0.15s ease, background 0.2s ease;
 }
 
 .fab:hover {
-  background: #966274;
+  background: #8a4560;
   transform: scale(1.06);
 }
 
@@ -1429,12 +1429,12 @@ body.is-locked .app-settings-btn {
 .modal-panel {
   position: relative;
   width: min(420px, 100%);
-  background: #fffcfd;
+  background: #fff9fb;
   border: 1px solid var(--line);
   border-radius: 28px;
   padding: 1.25rem 1.2rem 1.1rem;
   animation: rise 0.25s ease both;
-  box-shadow: 0 20px 50px rgba(168, 109, 124, 0.14);
+  box-shadow: 0 20px 50px rgba(162, 79, 104, 0.14);
 }
 
 .modal-panel h3 {
@@ -1463,7 +1463,7 @@ body.is-locked .app-settings-btn {
 .btn-ghost {
   background: transparent !important;
   color: var(--muted) !important;
-  border: 1px solid rgba(138, 117, 128, 0.35);
+  border: 1px solid rgba(138, 111, 122, 0.35);
 }
 
 .btn-ghost:hover {
@@ -1522,7 +1522,7 @@ body.is-locked .app-settings-btn {
   border-radius: 18px;
   overflow: hidden;
   border: 1px solid var(--line);
-  background: rgba(248, 236, 240, 0.55);
+  background: rgba(246, 226, 233, 0.55);
   display: grid;
   place-items: center;
 }
@@ -1559,7 +1559,7 @@ body.is-locked .app-settings-btn {
   height: 1.2rem;
   padding: 0 0.25rem;
   border-radius: 999px;
-  background: rgba(168, 109, 124, 0.92);
+  background: rgba(162, 79, 104, 0.92);
   color: #fff;
   font-size: 0.68rem;
   font-weight: 700;
@@ -1598,7 +1598,7 @@ body.is-locked .app-settings-btn {
 }
 
 .photo-move-btn:not(:disabled):active {
-  background: rgba(168, 109, 124, 0.85) !important;
+  background: rgba(162, 79, 104, 0.85) !important;
 }
 
 
@@ -1611,7 +1611,7 @@ body.is-locked .app-settings-btn {
 .photo-add-tile {
   aspect-ratio: 1;
   width: 100%;
-  border: 1.5px dashed rgba(196, 137, 150, 0.5);
+  border: 1.5px dashed rgba(196, 107, 130, 0.5);
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.55);
   color: var(--rose);
@@ -1626,7 +1626,7 @@ body.is-locked .app-settings-btn {
 
 .photo-add-tile:hover {
   border-color: var(--rose-deep);
-  background: rgba(248, 236, 240, 0.95);
+  background: rgba(246, 226, 233, 0.95);
   color: var(--rose-deep);
 }
 
@@ -1664,7 +1664,7 @@ body.is-locked .app-settings-btn {
   border: 2px solid #fff;
   border-radius: 18px;
   overflow: hidden;
-  background: #f3e8ec;
+  background: #efd8e0;
   box-shadow: 0 6px 14px rgba(58, 47, 52, 0.12);
   cursor: zoom-in;
   transform-origin: center center;
@@ -1681,7 +1681,7 @@ body.is-locked .app-settings-btn {
 .place-stack-card:hover {
   transform: rotate(0deg) translateY(-4px) scale(1.04);
   z-index: 20;
-  box-shadow: 0 10px 20px rgba(168, 109, 124, 0.2);
+  box-shadow: 0 10px 20px rgba(162, 79, 104, 0.2);
 }
 
 .place-stack-card img {
@@ -1706,7 +1706,7 @@ body.is-locked .app-settings-btn {
   font-size: 0.68rem;
   line-height: 1.35rem;
   text-align: center;
-  box-shadow: 0 2px 8px rgba(168, 109, 124, 0.28);
+  box-shadow: 0 2px 8px rgba(162, 79, 104, 0.28);
 }
 
 @media (max-width: 520px) {
