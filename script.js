@@ -36,6 +36,55 @@ document.addEventListener("DOMContentLoaded", function () {
     fights: true
   };
 
+  // 本机找回的「想对你说」（云端整本覆盖时曾丢失）；按 id 合并，不会重复
+  var RECOVERED_SWEETS = [
+    {
+      id: "id-1783774071366-4630",
+      author: "馨宝",
+      date: "2026-07-11",
+      note: "请不要害怕问我任何问题，保持我们之间的确定感，也不要停止你的热情，永远在我身边。",
+      title: ""
+    },
+    {
+      id: "id-1783870083810-2369",
+      author: "馨宝",
+      date: "2026-07-12",
+      note: "崔斌斌能不能不要老是熬夜了呀",
+      title: ""
+    }
+  ];
+
+  /** 按 id 合并两份列表：两边都有的条目以 newer 为准，只在一边的保留 */
+  function mergeById(localArr, remoteArr) {
+    var map = {};
+    (localArr || []).forEach(function (item) {
+      if (item && item.id) map[item.id] = item;
+    });
+    (remoteArr || []).forEach(function (item) {
+      if (item && item.id) map[item.id] = item;
+    });
+    return Object.keys(map).map(function (id) {
+      return map[id];
+    });
+  }
+
+  /** 云端拉取后与本机合并：两边独有的都保留；同一 id 以本机为准（刚编辑的不会被旧云端盖掉） */
+  function mergeJournalPayload(localData, remotePayload) {
+    var local = localData || JSON.parse(JSON.stringify(defaultData));
+    var remote = remotePayload || {};
+    var out = {};
+    Object.keys(defaultData).forEach(function (key) {
+      out[key] = mergeById(remote[key], local[key]);
+    });
+    return out;
+  }
+
+  function applyRecoveredSweets(target) {
+    if (!target) return target;
+    target.sweets = mergeById(target.sweets, RECOVERED_SWEETS);
+    return target;
+  }
+
   // ----- 页面切换（整页切换，不是叠在首页下面）-----
   function showView(name) {
     if (!VALID_VIEWS[name]) name = "home";
@@ -190,8 +239,54 @@ document.addEventListener("DOMContentLoaded", function () {
   function saveData() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     if (window.XinbaoCloud && XinbaoCloud.canSync()) {
-      XinbaoCloud.queuePush(data);
+      // 先拉云端合并，再上传——避免两人各写各的时「后上传的整本盖掉先上传的」
+      queueMergePush({ immediate: true });
     }
+  }
+
+  var mergePushTimer = null;
+  var mergePushRunning = false;
+  var mergePushAgain = false;
+
+  function queueMergePush(options) {
+    options = options || {};
+    clearTimeout(mergePushTimer);
+    var delay = options.immediate ? 0 : 120;
+    mergePushTimer = setTimeout(function () {
+      runMergePush();
+    }, delay);
+  }
+
+  function runMergePush() {
+    if (!window.XinbaoCloud || !XinbaoCloud.canSync()) return;
+    if (mergePushRunning) {
+      mergePushAgain = true;
+      return;
+    }
+    mergePushRunning = true;
+    mergePushAgain = false;
+    var localSnapshot = data;
+    XinbaoCloud.pullJournal()
+      .then(function (remote) {
+        if (remote) {
+          var merged = applyRecoveredSweets(
+            mergeJournalPayload(localSnapshot, remote)
+          );
+          data = merged;
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+          try {
+            renderAll();
+          } catch (err) {}
+        }
+        return XinbaoCloud.pushJournal(data);
+      })
+      .catch(function (err) {
+        console.warn("合并同步失败", err);
+      })
+      .then(function () {
+        mergePushRunning = false;
+        if (mergePushAgain) runMergePush();
+      });
   }
 
   function setPairMsg(text, ok) {
@@ -322,7 +417,10 @@ document.addEventListener("DOMContentLoaded", function () {
             setPairMsg("加入成功，开始同步…", true);
             return XinbaoCloud.pullJournal().then(function (payload) {
               if (payload) {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+                var merged = applyRecoveredSweets(
+                  mergeJournalPayload(loadData(), payload)
+                );
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
                 data = loadData();
                 reindexOrders(data.anniversaries);
                 saveData();
@@ -368,7 +466,10 @@ document.addEventListener("DOMContentLoaded", function () {
             }
             return XinbaoCloud.pullJournal().then(function (payload) {
               if (payload) {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+                var merged = applyRecoveredSweets(
+                  mergeJournalPayload(loadData(), payload)
+                );
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
                 data = loadData();
                 reindexOrders(data.anniversaries);
                 renderAll();
@@ -435,7 +536,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function bootWithData() {
-    data = loadData();
+    data = applyRecoveredSweets(loadData());
     reindexOrders(data.anniversaries);
     try {
       saveData();
@@ -2002,12 +2103,15 @@ document.addEventListener("DOMContentLoaded", function () {
             }
             return XinbaoCloud.pullJournal().then(function (payload) {
               if (payload) {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+                var merged = applyRecoveredSweets(
+                  mergeJournalPayload(loadData(), payload)
+                );
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
               } else {
                 applyPublishedSeedIfNeeded();
               }
               bootWithData();
-              // 确保云端有一份
+              // 确保云端有一份（含找回的想法）
               return XinbaoCloud.pushJournal(data);
             });
           })
