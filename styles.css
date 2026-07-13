@@ -748,10 +748,63 @@ body.is-locked .app-settings-btn {
   vertical-align: middle;
 }
 
+.anni-kind-field {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.anni-kind-legend {
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin-bottom: 0.35rem;
+}
+
+.anni-kind-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.anni-kind-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 0.88rem;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.anni-kind-chip input {
+  margin: 0;
+}
+
+.anni-kind-chip:has(input:checked) {
+  border-color: var(--rose-deep);
+  color: var(--rose-deep);
+  background: rgba(196, 95, 122, 0.08);
+}
+
 .entry-remind {
   margin-top: 0.35rem;
   font-size: 0.88rem;
   color: var(--rose-deep);
+}
+
+.entry-days--main {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.entry-anni-sub {
+  margin-top: 0.25rem;
+  font-size: 0.86rem;
+  color: var(--muted);
 }
 
 .tile-grid {

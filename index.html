@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="icons/icon-180.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=no-star-v1" />
+  <link rel="stylesheet" href="styles.css?v=anni-kind-v1" />
 </head>
 <body class="is-locked" data-view="home">
   <!-- App 顶栏：设置入口（解锁后显示） -->
@@ -190,10 +190,10 @@
       <ul class="activity-list" id="list-activity"></ul>
     </section>
 
-    <section class="home-reminders" aria-label="纪念日提醒">
+    <section class="home-reminders" aria-label="即将到来的日子">
       <div class="reminders-head">
-        <p class="reminders-kicker">REMINDERS</p>
-        <h2 class="reminders-title">纪念日提醒</h2>
+        <p class="reminders-kicker">UPCOMING</p>
+        <h2 class="reminders-title">即将到来</h2>
       </div>
       <ul class="reminder-list" id="list-reminders"></ul>
     </section>
@@ -234,7 +234,7 @@
       <a class="btn-back" href="#home">← 返回首页</a>
       <h2 class="page-title">纪念日</h2>
     </div>
-    <p class="page-desc">一年又一年，仍想和你一起记得</p>
+    <p class="page-desc">每年要过的日子，和只想悄悄数着的日子</p>
 
     <div class="anni-toolbar" role="group" aria-label="纪念日排序方式">
       <span class="sort-hint">排序</span>
@@ -261,10 +261,23 @@
       <div class="modal-panel" role="dialog" aria-labelledby="modal-anni-title">
         <h3 id="modal-anni-title">添加纪念日</h3>
         <form class="entry-form entry-form--modal" id="form-anniversary" data-type="anniversaries">
-          <label class="full">标题<input name="title" type="text" required placeholder="例如：搬进小家 / 馨宝生日" /></label>
+          <label class="full">标题<input name="title" type="text" required placeholder="例如：馨宝生日 / 搬进小家" /></label>
           <label class="full">日期<input name="date" type="date" required /></label>
+          <fieldset class="full anni-kind-field">
+            <legend class="anni-kind-legend">类型</legend>
+            <div class="anni-kind-chips" role="radiogroup" aria-label="纪念日类型">
+              <label class="anni-kind-chip">
+                <input type="radio" name="kind" value="yearly" checked />
+                <span>每年庆祝</span>
+              </label>
+              <label class="anni-kind-chip">
+                <input type="radio" name="kind" value="count" />
+                <span>只记天数</span>
+              </label>
+            </div>
+            <p class="form-hint">每年庆祝会倒数到下一次（生日、周年）；只记天数只显示过了多久（如搬进小家）。</p>
+          </fieldset>
           <label class="full">备注<input name="note" type="text" placeholder="可选" /></label>
-          <p class="form-hint">保存后只是一条记录。若要生日、周年出现在首页提醒，请在列表里点「加入提醒」。</p>
           <div class="modal-actions">
             <button type="button" class="btn btn-ghost" data-close-anni-modal>取消</button>
             <button type="submit" class="btn">保存</button>
@@ -711,7 +724,7 @@
     })();
   </script>
   <script src="seed-data.js?v=20260713-recover-sweets"></script>
-  <script src="script.js?v=mobile-realtime-v1"></script>
+  <script src="script.js?v=anni-kind-v1"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", function () {

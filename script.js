@@ -1861,11 +1861,39 @@ document.addEventListener("DOMContentLoaded", function () {
     return dateObj.getMonth() + 1 + "月" + dateObj.getDate() + "日";
   }
 
-  function remindCountdownLabel(days) {
+  function formatYearMonthDay(dateObj) {
+    if (!dateObj) return "";
+    return dateObj.getFullYear() + "年" + formatMonthDay(dateObj);
+  }
+
+  /** 标题像生日时用「满 N 岁」，否则用「第 N 年」 */
+  function isBirthdayTitle(title) {
+    return /生日/.test(String(title || ""));
+  }
+
+  /** 下次庆祝对应的年头：下次年份 − 起始年份 */
+  function yearlyMilestoneLabel(item, nextDate) {
+    if (!item || !item.date || !nextDate) return "";
+    var startYear = Number(String(item.date).slice(0, 4));
+    if (!startYear) return "";
+    var n = nextDate.getFullYear() - startYear;
+    if (n < 0) n = 0;
+    if (isBirthdayTitle(item.title)) {
+      if (n <= 0) return "生日";
+      return "满 " + n + " 岁";
+    }
+    if (n <= 0) return "第 1 年";
+    return "第 " + n + " 年";
+  }
+
+  function yearlyCountdownMain(days) {
     if (days === 0) return "就是今天";
-    if (days === 1) return "明天";
-    // 按「每年一次」计算，距离下一次纪念日
-    return "一年还有 " + days + " 天";
+    if (days === 1) return "还有 1 天";
+    return "还有 " + days + " 天";
+  }
+
+  function remindCountdownLabel(days) {
+    return yearlyCountdownMain(days);
   }
 
   function getUpcomingReminders() {
@@ -1879,7 +1907,8 @@ document.addEventListener("DOMContentLoaded", function () {
           id: item.id,
           title: item.title,
           next: next,
-          daysLeft: daysUntilDate(next)
+          daysLeft: daysUntilDate(next),
+          milestone: yearlyMilestoneLabel(item, next)
         };
       })
       .filter(function (row) {
@@ -1897,7 +1926,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (!upcoming.length) {
       listEl.innerHTML =
-        '<li class="reminder-empty">需要每年记住的日子，在「纪念日」里点「加入提醒」即可出现在这里。<br />像「搬进小家」这种只想留念的，不必加入提醒。</li>';
+        '<li class="reminder-empty">在「纪念日」里把生日、周年设为「每年庆祝」，就会出现在这里倒数。<br />像「搬进小家」这种只想留念的，选「只记天数」即可。</li>';
       return;
     }
 
@@ -1905,6 +1934,10 @@ document.addEventListener("DOMContentLoaded", function () {
       .map(function (row) {
         var urgency =
           row.daysLeft === 0 ? " is-today" : row.daysLeft <= 7 ? " is-soon" : "";
+        var sub =
+          "下次：" +
+          formatMonthDay(row.next) +
+          (row.milestone ? " · " + row.milestone : "");
         return (
           '<li class="reminder-item' +
           urgency +
@@ -1914,11 +1947,11 @@ document.addEventListener("DOMContentLoaded", function () {
           escapeText(row.title || "纪念日") +
           "</p>" +
           '<p class="reminder-date">' +
-          escapeText("下次：" + formatMonthDay(row.next)) +
+          escapeText(sub) +
           "</p>" +
           "</div>" +
           '<p class="reminder-countdown">' +
-          escapeText(remindCountdownLabel(row.daysLeft)) +
+          escapeText(yearlyCountdownMain(row.daysLeft)) +
           "</p>" +
           "</li>"
         );
@@ -2004,7 +2037,9 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
       }
       if (el.type === "checkbox") out[el.name] = !!el.checked;
-      else out[el.name] = el.value;
+      else if (el.type === "radio") {
+        if (el.checked) out[el.name] = el.value;
+      } else out[el.name] = el.value;
     });
     return out;
   }
@@ -2014,6 +2049,13 @@ document.addEventListener("DOMContentLoaded", function () {
     Object.keys(fields).forEach(function (name) {
       var el = form.elements[name];
       if (!el) return;
+      if (el.length && el[0] && el[0].type === "radio") {
+        var want = String(fields[name] == null ? "" : fields[name]);
+        Array.prototype.forEach.call(el, function (radio) {
+          radio.checked = radio.value === want;
+        });
+        return;
+      }
       if (el.type === "checkbox") el.checked = !!fields[name];
       else el.value = fields[name] == null ? "" : String(fields[name]);
     });
@@ -2392,26 +2434,52 @@ document.addEventListener("DOMContentLoaded", function () {
 
     listEl.innerHTML = items.map(function (item, index) {
       var pinBadge = item.pinned ? '<span class="pin-badge">置顶</span>' : "";
-      var isRemind = item.remind === true;
-      var remindBadge = isRemind ? '<span class="remind-badge">提醒中</span>' : "";
+      var isYearly = item.remind === true;
+      var kindBadge = isYearly
+        ? '<span class="remind-badge">每年庆祝</span>'
+        : '<span class="pin-badge">只记天数</span>';
       var note = item.note
         ? '<p class="entry-note">' + escapeText(item.note) + "</p>"
         : "";
-      var next = isRemind ? nextYearlyDate(item.date) : null;
+      var next = isYearly ? nextYearlyDate(item.date) : null;
       var daysLeft = next ? daysUntilDate(next) : null;
-      var remindLine =
-        next && daysLeft != null
-          ? '<p class="entry-remind">' +
-            escapeText(
-              daysLeft === 0
-                ? "今天就是这一天"
-                : "下次：" +
-                  formatMonthDay(next) +
-                  " · " +
-                  remindCountdownLabel(daysLeft)
-            ) +
-            "</p>"
-          : "";
+      var milestone = yearlyMilestoneLabel(item, next);
+      var mainLine = "";
+      var subLine = "";
+      var extraDays = "";
+
+      if (isYearly && next && daysLeft != null) {
+        mainLine =
+          '<p class="entry-days entry-days--main">' +
+          escapeText(yearlyCountdownMain(daysLeft)) +
+          "</p>";
+        subLine =
+          '<p class="entry-remind">' +
+          escapeText(
+            "下次：" +
+              formatYearMonthDay(next) +
+              (milestone ? " · " + milestone : "")
+          ) +
+          "</p>";
+        // 非生日的每年庆祝：额外保留「已经 X 天了」
+        if (!isBirthdayTitle(item.title)) {
+          extraDays =
+            '<p class="entry-anni-sub">' +
+            escapeText(daysLabel(item)) +
+            "</p>";
+        } else {
+          extraDays =
+            '<p class="entry-anni-sub">' +
+            escapeText("起始：" + (item.date || "")) +
+            "</p>";
+        }
+      } else {
+        mainLine =
+          '<p class="entry-days entry-days--main">' +
+          escapeText(daysLabel(item)) +
+          "</p>";
+      }
+
       var moveBtns = manual
         ? '<button type="button" class="btn-mini" data-anni-act="up" data-id="' +
           escapeText(item.id) +
@@ -2420,37 +2488,38 @@ document.addEventListener("DOMContentLoaded", function () {
           escapeText(item.id) +
           '">下移</button>'
         : "";
-      var remindBtn =
+      var kindBtn =
         '<button type="button" class="btn-mini' +
-        (isRemind ? " btn-mini--active" : " btn-mini--accent") +
+        (isYearly ? " btn-mini--active" : " btn-mini--accent") +
         '" data-anni-act="remind" data-id="' +
         escapeText(item.id) +
         '">' +
-        (isRemind ? "移出提醒" : "加入提醒") +
+        (isYearly ? "改为只记天数" : "改为每年庆祝") +
         "</button>";
 
       return (
         '<li class="entry-item' +
         (item.pinned ? " is-pinned" : "") +
-        (isRemind ? " is-remind" : "") +
+        (isYearly ? " is-remind" : "") +
         '">' +
         '<div class="entry-top">' +
         '<p class="entry-title">' +
         pinBadge +
-        remindBadge +
+        kindBadge +
         escapeText(item.title || "（无标题）") +
         "</p>" +
         '<p class="entry-date">' +
-        escapeText(item.date || "") +
+        escapeText(
+          isYearly && next ? formatMonthDay(next) : item.date || ""
+        ) +
         "</p>" +
         "</div>" +
-        '<p class="entry-days">' +
-        escapeText(daysLabel(item)) +
-        "</p>" +
-        remindLine +
+        mainLine +
+        subLine +
+        extraDays +
         note +
         '<div class="entry-actions">' +
-        remindBtn +
+        kindBtn +
         '<button type="button" class="btn-mini" data-anni-act="pin" data-id="' +
         escapeText(item.id) +
         '">' +
@@ -2775,8 +2844,15 @@ document.addEventListener("DOMContentLoaded", function () {
       form.title.value = item.title || "";
       form.date.value = item.date || "";
       form.note.value = item.note || "";
+      var kind = item.remind === true ? "yearly" : "count";
+      Array.prototype.forEach.call(form.elements.kind, function (radio) {
+        radio.checked = radio.value === kind;
+      });
     } else {
       form.date.value = todayStr();
+      Array.prototype.forEach.call(form.elements.kind, function (radio) {
+        radio.checked = radio.value === "yearly";
+      });
     }
     setActiveDraft("anniversaries", editingId);
     restoreDraftToForm("anniversaries", editingId, form);
@@ -3734,6 +3810,10 @@ document.addEventListener("DOMContentLoaded", function () {
         note: (fd.get("note") || "").toString().trim()
       };
 
+      if (type === "anniversaries") {
+        fields.kind = (fd.get("kind") || "yearly").toString();
+      }
+
       if (type === "sweets") {
         fields.author = (fd.get("author") || "").toString();
         fields.title = "";
@@ -3752,7 +3832,7 @@ document.addEventListener("DOMContentLoaded", function () {
         old.date = fields.date;
         old.note = fields.note;
         if (type === "anniversaries") {
-          // 编辑时不改「是否提醒」，提醒只通过列表按钮开关
+          old.remind = fields.kind === "yearly";
         }
         if (type === "sweets") old.author = fields.author;
         if (type === "fights") {
@@ -3761,7 +3841,7 @@ document.addEventListener("DOMContentLoaded", function () {
           old.reflection = fields.reflection;
         }
         touchUpdatedAt(old);
-        // 纪念日：保留置顶、排序与提醒状态
+        // 纪念日：保留置顶、排序；类型由表单 kind 写入 remind
       } else {
         var entry = {
           id: uid(),
@@ -3771,7 +3851,7 @@ document.addEventListener("DOMContentLoaded", function () {
         };
         if (type === "anniversaries") {
           entry.pinned = false;
-          entry.remind = false;
+          entry.remind = fields.kind !== "count";
           entry.order = data.anniversaries.length;
         }
         if (type === "sweets") {
@@ -3891,7 +3971,7 @@ document.addEventListener("DOMContentLoaded", function () {
         noteLocalWrite("anniversaries");
         renderAnniversaries();
         renderReminders();
-        showToast(item.remind ? "已加入提醒" : "已移出提醒");
+        showToast(item.remind ? "已改为每年庆祝" : "已改为只记天数");
         return;
       }
 
