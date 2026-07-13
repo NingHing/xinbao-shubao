@@ -7,6 +7,7 @@ document.addEventListener("DOMContentLoaded", function () {
   var STORAGE_KEY = "xinbao-shubao-journal-v1";
   var SEED_VERSION_KEY = "xinbao-shubao-seed-v";
   var LAST_SEEN_KEY = "xinbao-shubao-last-seen-v1";
+  var DRAFT_KEY = "xinbao-shubao-drafts-v1";
   var PRODUCT_NAME = "并记";
   var MODULE_KEYS = ["anniversaries", "events", "sweets", "places", "fights"];
   var MODULE_LABELS = {
@@ -1477,6 +1478,186 @@ document.addEventListener("DOMContentLoaded", function () {
     editingId = null;
   }
 
+  // ----- 写作草稿（退出弹窗不丢未保存内容）-----
+  var draftSaveTimer = null;
+  var activeDraft = { kind: "", id: null, extra: "" };
+
+  function draftSlot(kind, id, extra) {
+    var slot = String(kind || "") + "::" + (id || "new");
+    if (extra) slot += "::" + extra;
+    return slot;
+  }
+
+  function readAllDrafts() {
+    try {
+      var raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return {};
+      var parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch (err) {
+      return {};
+    }
+  }
+
+  function writeAllDrafts(map) {
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(map || {}));
+    } catch (err) {}
+  }
+
+  function clearDraft(slot) {
+    if (!slot) return;
+    var all = readAllDrafts();
+    if (!Object.prototype.hasOwnProperty.call(all, slot)) return;
+    delete all[slot];
+    writeAllDrafts(all);
+  }
+
+  function collectFormFields(form) {
+    var out = {};
+    if (!form) return out;
+    Array.prototype.forEach.call(form.elements, function (el) {
+      if (!el || !el.name) return;
+      var tag = (el.tagName || "").toLowerCase();
+      if (tag !== "input" && tag !== "textarea" && tag !== "select") return;
+      if (
+        el.type === "button" ||
+        el.type === "submit" ||
+        el.type === "file" ||
+        el.type === "hidden"
+      ) {
+        return;
+      }
+      if (el.type === "checkbox") out[el.name] = !!el.checked;
+      else out[el.name] = el.value;
+    });
+    return out;
+  }
+
+  function fillFormFields(form, fields) {
+    if (!form || !fields) return;
+    Object.keys(fields).forEach(function (name) {
+      var el = form.elements[name];
+      if (!el) return;
+      if (el.type === "checkbox") el.checked = !!fields[name];
+      else el.value = fields[name] == null ? "" : String(fields[name]);
+    });
+  }
+
+  function draftIsMeaningful(kind, fields) {
+    if (!fields) return false;
+    function text(key) {
+      return String(fields[key] || "").trim();
+    }
+    if (kind === "sweets" || kind === "sweet-reply") return !!text("note");
+    if (kind === "anniversaries") return !!text("title") || !!text("note");
+    if (kind === "events") return !!text("title") || !!text("note");
+    if (kind === "fights") {
+      return (
+        !!text("title") ||
+        !!text("note") ||
+        !!text("resolve") ||
+        !!text("reflection")
+      );
+    }
+    if (kind === "places") {
+      return !!text("title") || !!text("note") || !!text("cost");
+    }
+    return Object.keys(fields).some(function (key) {
+      return String(fields[key] || "").trim();
+    });
+  }
+
+  function saveDraftFromForm(kind, id, form, extra) {
+    if (!kind || !form) return false;
+    var slot = draftSlot(kind, id, extra);
+    var fields = collectFormFields(form);
+    if (!draftIsMeaningful(kind, fields)) {
+      clearDraft(slot);
+      return false;
+    }
+    var all = readAllDrafts();
+    all[slot] = {
+      fields: fields,
+      savedAt: new Date().toISOString()
+    };
+    writeAllDrafts(all);
+    return true;
+  }
+
+  function restoreDraftToForm(kind, id, form, extra) {
+    if (!kind || !form) return false;
+    var all = readAllDrafts();
+    var draft = all[draftSlot(kind, id, extra)];
+    if (!draft || !draft.fields) return false;
+    fillFormFields(form, draft.fields);
+    return true;
+  }
+
+  function setActiveDraft(kind, id, extra) {
+    activeDraft = {
+      kind: kind || "",
+      id: id || null,
+      extra: extra || ""
+    };
+  }
+
+  function clearActiveDraft() {
+    activeDraft = { kind: "", id: null, extra: "" };
+  }
+
+  function queueActiveDraftSave() {
+    clearTimeout(draftSaveTimer);
+    draftSaveTimer = setTimeout(function () {
+      if (!activeDraft.kind) return;
+      var formId =
+        activeDraft.kind === "anniversaries"
+          ? "form-anniversary"
+          : activeDraft.kind === "events"
+            ? "form-event"
+            : activeDraft.kind === "sweets"
+              ? "form-sweet"
+              : activeDraft.kind === "sweet-reply"
+                ? "form-sweet-reply"
+                : activeDraft.kind === "fights"
+                  ? "form-fight"
+                  : activeDraft.kind === "places"
+                    ? "form-place"
+                    : "";
+      var form = formId ? document.getElementById(formId) : null;
+      if (!form) return;
+      saveDraftFromForm(
+        activeDraft.kind,
+        activeDraft.id,
+        form,
+        activeDraft.extra
+      );
+    }, 350);
+  }
+
+  document.body.addEventListener("input", function (e) {
+    if (!e.target || !e.target.closest) return;
+    if (
+      !e.target.closest(
+        "#form-anniversary, #form-event, #form-sweet, #form-sweet-reply, #form-fight, #form-place"
+      )
+    ) {
+      return;
+    }
+    queueActiveDraftSave();
+  });
+  document.body.addEventListener("change", function (e) {
+    if (!e.target || !e.target.closest) return;
+    if (
+      !e.target.closest(
+        "#form-anniversary, #form-event, #form-sweet, #form-sweet-reply, #form-fight, #form-place"
+      )
+    ) {
+      return;
+    }
+    queueActiveDraftSave();
+  });
+
   function escapeText(s) {
     return String(s || "")
       .replaceAll("&", "&amp;")
@@ -2090,14 +2271,26 @@ document.addEventListener("DOMContentLoaded", function () {
     } else {
       form.date.value = todayStr();
     }
+    setActiveDraft("anniversaries", editingId);
+    if (restoreDraftToForm("anniversaries", editingId, form)) {
+      showToast("已恢复草稿");
+    }
     modal.hidden = false;
     form.title.focus();
   }
 
-  function closeAnniModal() {
+  function closeAnniModal(opts) {
+    opts = opts || {};
+    var form = document.getElementById("form-anniversary");
+    if (!opts.skipDraftSave && form) {
+      if (saveDraftFromForm("anniversaries", editingId, form)) {
+        showToast("草稿已保存");
+      }
+    }
     modal.hidden = true;
-    document.getElementById("form-anniversary").reset();
+    if (form) form.reset();
     clearEditing();
+    clearActiveDraft();
     setModalTitle("modal-anni-title", "添加纪念日");
   }
 
@@ -2145,6 +2338,10 @@ document.addEventListener("DOMContentLoaded", function () {
       form.dateEnd.value = today;
       form.ongoing.checked = false;
     }
+    setActiveDraft("events", editingId);
+    if (restoreDraftToForm("events", editingId, form)) {
+      showToast("已恢复草稿");
+    }
     syncEventOngoingUI();
     eventModal.hidden = false;
     form.title.focus();
@@ -2161,6 +2358,10 @@ document.addEventListener("DOMContentLoaded", function () {
       form.note.value = item.note || "";
     } else {
       form.date.value = todayStr();
+    }
+    setActiveDraft("sweets", editingId);
+    if (restoreDraftToForm("sweets", editingId, form)) {
+      showToast("已恢复草稿");
     }
     sweetModal.hidden = false;
     form.note.focus();
@@ -2211,16 +2412,41 @@ document.addEventListener("DOMContentLoaded", function () {
       else form.author.value = "馨宝";
       form.date.value = todayStr();
     }
+    setActiveDraft("sweet-reply", replyEditing.replyId || null, parentId);
+    if (
+      restoreDraftToForm(
+        "sweet-reply",
+        replyEditing.replyId || null,
+        form,
+        parentId
+      )
+    ) {
+      showToast("已恢复草稿");
+    }
     sweetReplyModal.hidden = false;
     form.note.focus();
   }
 
-  function closeSweetReplyModal() {
-    if (sweetReplyModal) sweetReplyModal.hidden = true;
+  function closeSweetReplyModal(opts) {
+    opts = opts || {};
     var form = document.getElementById("form-sweet-reply");
+    if (!opts.skipDraftSave && form) {
+      if (
+        saveDraftFromForm(
+          "sweet-reply",
+          replyEditing.replyId || null,
+          form,
+          replyEditing.parentId
+        )
+      ) {
+        showToast("草稿已保存");
+      }
+    }
+    if (sweetReplyModal) sweetReplyModal.hidden = true;
     if (form) form.reset();
     replyEditing.parentId = "";
     replyEditing.replyId = "";
+    clearActiveDraft();
     setModalTitle("modal-sweet-reply-title", "回复");
     var quote = document.getElementById("sweet-reply-quote");
     if (quote) {
@@ -2245,28 +2471,56 @@ document.addEventListener("DOMContentLoaded", function () {
       form.author.value = "我们";
       form.date.value = todayStr();
     }
+    setActiveDraft("fights", editingId);
+    if (restoreDraftToForm("fights", editingId, form)) {
+      showToast("已恢复草稿");
+    }
     fightModal.hidden = false;
     form.title.focus();
   }
 
-  function closeEventModal() {
+  function closeEventModal(opts) {
+    opts = opts || {};
+    var form = document.getElementById("form-event");
+    if (!opts.skipDraftSave && form) {
+      if (saveDraftFromForm("events", editingId, form)) {
+        showToast("草稿已保存");
+      }
+    }
     eventModal.hidden = true;
-    document.getElementById("form-event").reset();
+    if (form) form.reset();
     clearEditing();
+    clearActiveDraft();
     setModalTitle("modal-event-title", "记下重要的事");
   }
 
-  function closeSweetModal() {
+  function closeSweetModal(opts) {
+    opts = opts || {};
+    var form = document.getElementById("form-sweet");
+    if (!opts.skipDraftSave && form) {
+      if (saveDraftFromForm("sweets", editingId, form)) {
+        showToast("草稿已保存");
+      }
+    }
     sweetModal.hidden = true;
-    document.getElementById("form-sweet").reset();
+    if (form) form.reset();
     clearEditing();
+    clearActiveDraft();
     setModalTitle("modal-sweet-title", "想对你说");
   }
 
-  function closeFightModal() {
+  function closeFightModal(opts) {
+    opts = opts || {};
+    var form = document.getElementById("form-fight");
+    if (!opts.skipDraftSave && form) {
+      if (saveDraftFromForm("fights", editingId, form)) {
+        showToast("草稿已保存");
+      }
+    }
     fightModal.hidden = true;
-    document.getElementById("form-fight").reset();
+    if (form) form.reset();
     clearEditing();
+    clearActiveDraft();
     setModalTitle("modal-fight-title", "记一次和解");
   }
 
@@ -2328,7 +2582,14 @@ document.addEventListener("DOMContentLoaded", function () {
       saveData();
       noteLocalWrite("sweets");
       renderList("sweets");
-      closeSweetReplyModal();
+      clearDraft(
+        draftSlot(
+          "sweet-reply",
+          replyId || null,
+          parentId
+        )
+      );
+      closeSweetReplyModal({ skipDraftSave: true });
       showToast(replyId ? "已更新回复" : "已回复");
     });
   }
@@ -2520,17 +2781,29 @@ document.addEventListener("DOMContentLoaded", function () {
       form.dateEnd.value = todayStr();
       pendingPlacePhotos = [];
     }
+    setActiveDraft("places", editingId);
+    if (restoreDraftToForm("places", editingId, form)) {
+      showToast("已恢复草稿");
+    }
     renderPlacePreview();
     placeModal.hidden = false;
     form.title.focus();
   }
 
-  function closePlaceModal() {
+  function closePlaceModal(opts) {
+    opts = opts || {};
+    var form = document.getElementById("form-place");
+    if (!opts.skipDraftSave && form) {
+      if (saveDraftFromForm("places", editingId, form)) {
+        showToast("草稿已保存");
+      }
+    }
     placeModal.hidden = true;
-    document.getElementById("form-place").reset();
+    if (form) form.reset();
     pendingPlacePhotos = [];
     renderPlacePreview();
     clearEditing();
+    clearActiveDraft();
     setModalTitle("modal-place-title", "添加足迹");
   }
 
@@ -2799,7 +3072,8 @@ document.addEventListener("DOMContentLoaded", function () {
           return;
         }
         renderPlaces();
-        closePlaceModal();
+        clearDraft(draftSlot("places", editingId));
+        closePlaceModal({ skipDraftSave: true });
         showToast(isEdit ? "已更新足迹" : "已保存足迹");
         return;
       }
@@ -2842,7 +3116,8 @@ document.addEventListener("DOMContentLoaded", function () {
         saveData();
         noteLocalWrite("events");
         renderEvents();
-        closeEventModal();
+        clearDraft(draftSlot("events", editingId));
+        closeEventModal({ skipDraftSave: true });
         showToast(isEdit ? "已更新" : "已记下重要的事");
         return;
       }
@@ -2912,10 +3187,22 @@ document.addEventListener("DOMContentLoaded", function () {
       renderList(type);
       if (type === "anniversaries") renderReminders();
 
-      if (type === "anniversaries") closeAnniModal();
-      if (type === "events") closeEventModal();
-      if (type === "sweets") closeSweetModal();
-      if (type === "fights") closeFightModal();
+      if (type === "anniversaries") {
+        clearDraft(draftSlot("anniversaries", editingId));
+        closeAnniModal({ skipDraftSave: true });
+      }
+      if (type === "events") {
+        clearDraft(draftSlot("events", editingId));
+        closeEventModal({ skipDraftSave: true });
+      }
+      if (type === "sweets") {
+        clearDraft(draftSlot("sweets", editingId));
+        closeSweetModal({ skipDraftSave: true });
+      }
+      if (type === "fights") {
+        clearDraft(draftSlot("fights", editingId));
+        closeFightModal({ skipDraftSave: true });
+      }
 
       if (type === "anniversaries") showToast(isEdit ? "已更新纪念日" : "已保存纪念日");
       else if (type === "sweets") showToast(isEdit ? "已更新" : "已写给对方");
