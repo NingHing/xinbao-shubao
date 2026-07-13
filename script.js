@@ -2554,7 +2554,9 @@ document.addEventListener("DOMContentLoaded", function () {
         editButtonHtml("places", item.id) +
         '<button type="button" class="btn-mini" data-edit-place-photos="' +
         escapeText(item.id) +
-        '">照片</button>' +
+        '">' +
+        (photos.length ? "管理照片" : "添加照片") +
+        "</button>" +
         '<button type="button" class="btn-delete" data-type="places" data-id="' +
         escapeText(item.id) +
         '">删除</button>' +
@@ -3645,7 +3647,6 @@ document.addEventListener("DOMContentLoaded", function () {
           cost: Number(fd.get("cost")) || 0,
           note: (fd.get("note") || "").toString().trim()
         };
-        var openedPhotosAfterCreate = null;
         try {
           if (isEdit) {
             var oldPlace = findItem("places", editingId);
@@ -3665,10 +3666,12 @@ document.addEventListener("DOMContentLoaded", function () {
             data.places.push(placeFields);
             saveData();
             noteLocalWrite("places");
-            openedPhotosAfterCreate = placeFields;
           }
         } catch (err) {
-          if (!isEdit && openedPhotosAfterCreate) data.places.pop();
+          if (!isEdit) {
+            var last = data.places[data.places.length - 1];
+            if (last && last.id === placeFields.id) data.places.pop();
+          }
           alert("保存失败，请稍后再试。");
           return;
         }
@@ -3676,9 +3679,6 @@ document.addEventListener("DOMContentLoaded", function () {
         clearDraft(draftSlot("places", editingId));
         closePlaceModal({ skipDraftSave: true });
         showToast(isEdit ? "已更新足迹" : "已保存足迹");
-        if (openedPhotosAfterCreate) {
-          openPlacePhotosModal(openedPhotosAfterCreate);
-        }
         return;
       }
 
