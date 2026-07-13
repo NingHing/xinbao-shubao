@@ -1386,7 +1386,7 @@ document.addEventListener("DOMContentLoaded", function () {
       if (loggedIn) loggedIn.hidden = true;
       if (guest) guest.hidden = false;
       if (panel) panel.hidden = true;
-      if (note) note.textContent = "私密本机站 · 点板块进入独立页面";
+      if (note) note.textContent = "本机私密 · 点下方进入";
       return;
     }
 
@@ -1402,7 +1402,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!pair) {
       if (status) status.textContent = "还没有房间。创建后生成邀请码，或输入对方邀请码加入。";
       if (actions) actions.hidden = false;
-      if (note) note.textContent = "已登录云端 · 配对后即可双向同步";
+      if (note) note.textContent = "已登录 · 配对后即可同步";
       return;
     }
 
@@ -1411,7 +1411,7 @@ document.addEventListener("DOMContentLoaded", function () {
       var codeEl = document.getElementById("pair-invite-code");
       if (codeEl) codeEl.textContent = pair.invite_code;
       if (waiting) waiting.hidden = false;
-      if (note) note.textContent = "等待配对 · 目前仍主要保存在本机";
+      if (note) note.textContent = "等待另一半加入";
       return;
     }
 
@@ -1422,7 +1422,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (actions) actions.hidden = true;
     if (waiting) waiting.hidden = true;
     if (ready) ready.hidden = false;
-    if (note) note.textContent = "云端同步已开启 · 双方看到同一本";
+    if (note) note.textContent = "云端已连接 · 同一本日记";
     renderSyncStatus(XinbaoCloud.getSyncState());
   }
 

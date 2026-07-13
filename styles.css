@@ -216,9 +216,11 @@ body.is-locked .gate {
   animation: pulse-soft 3.2s ease-in-out infinite;
 }
 
-.privacy-note {
-  margin-top: 0.7rem;
-  font-size: 0.78rem;
+.privacy-note,
+.hero-status {
+  margin-top: 0.65rem;
+  font-size: 0.76rem;
+  letter-spacing: 0.08em;
   color: var(--muted);
 }
 
