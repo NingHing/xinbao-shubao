@@ -10,6 +10,8 @@ document.addEventListener("DOMContentLoaded", function () {
   var DRAFT_KEY = "xinbao-shubao-drafts-v1";
   /** 独立保存的删除 id，防止日记 JSON 被云端旧副本盖掉后又复活 */
   var DELETED_IDS_KEY = "xinbao-shubao-deleted-ids-v1";
+  /** 这台设备上「我」是昵称一还是昵称二：a | b */
+  var MY_ROLE_KEY = "xinbao-shubao-my-role-v1";
   var PRODUCT_NAME = "并记";
   var MODULE_KEYS = ["anniversaries", "events", "sweets", "places", "fights"];
   var MODULE_LABELS = {
@@ -374,6 +376,60 @@ document.addEventListener("DOMContentLoaded", function () {
     return normalizeNickname(data && data.nickB, "树宝");
   }
 
+  function getMyRole() {
+    try {
+      var role = localStorage.getItem(MY_ROLE_KEY);
+      if (role === "a" || role === "b") return role;
+    } catch (err) {}
+    return "a";
+  }
+
+  function setMyRole(role) {
+    var next = role === "b" ? "b" : "a";
+    try {
+      localStorage.setItem(MY_ROLE_KEY, next);
+    } catch (err) {}
+    return next;
+  }
+
+  function getMyNick() {
+    return getMyRole() === "b" ? getNickB() : getNickA();
+  }
+
+  function getPartnerNick() {
+    return getMyRole() === "b" ? getNickA() : getNickB();
+  }
+
+  function syncVoiceToAuthor(form) {
+    if (!form) return;
+    var authorEl = form.elements.author;
+    if (!authorEl) return;
+    var voice = "me";
+    var voices = form.elements.voice;
+    if (voices) {
+      if (voices.length) {
+        Array.prototype.forEach.call(voices, function (radio) {
+          if (radio.checked) voice = radio.value;
+        });
+      } else if (voices.value) {
+        voice = voices.value;
+      }
+    }
+    authorEl.value = voice === "us" ? "我们" : getMyNick();
+  }
+
+  function setVoiceFromAuthor(form, author) {
+    if (!form || !form.elements.voice) return;
+    var voice = author === "我们" ? "us" : "me";
+    Array.prototype.forEach.call(form.elements.voice, function (radio) {
+      radio.checked = radio.value === voice;
+    });
+    if (form.elements.author) {
+      form.elements.author.value =
+        voice === "us" ? "我们" : author || getMyNick();
+    }
+  }
+
   function ensureNicknames() {
     if (!data) return;
     data.nickA = normalizeNickname(data.nickA, "馨宝");
@@ -403,6 +459,7 @@ document.addEventListener("DOMContentLoaded", function () {
     ensureNicknames();
     var a = getNickA();
     var b = getNickB();
+    var me = getMyNick();
     document.querySelectorAll("[data-nick-slot='a']").forEach(function (el) {
       if (el.tagName === "OPTION") {
         el.value = a;
@@ -421,6 +478,18 @@ document.addEventListener("DOMContentLoaded", function () {
         el.textContent = b;
       }
     });
+    document.querySelectorAll("[data-voice-me-label]").forEach(function (el) {
+      el.textContent = "我（" + me + "）";
+    });
+    var roleALabel = document.getElementById("settings-role-a-label");
+    var roleBLabel = document.getElementById("settings-role-b-label");
+    if (roleALabel) roleALabel.textContent = a;
+    if (roleBLabel) roleBLabel.textContent = b;
+    var role = getMyRole();
+    var roleA = document.getElementById("settings-role-a");
+    var roleB = document.getElementById("settings-role-b");
+    if (roleA) roleA.checked = role === "a";
+    if (roleB) roleB.checked = role === "b";
     var nickAInput = document.getElementById("settings-nick-a");
     var nickBInput = document.getElementById("settings-nick-b");
     if (nickAInput && document.activeElement !== nickAInput) nickAInput.value = a;
@@ -1435,8 +1504,11 @@ document.addEventListener("DOMContentLoaded", function () {
           showToast("两个称呼不能一样");
           return;
         }
+        var roleA = document.getElementById("settings-role-a");
+        var roleB = document.getElementById("settings-role-b");
+        if (roleB && roleB.checked) setMyRole("b");
+        else setMyRole("a");
         migrateAuthorName(oldA, nextA);
-        // 若 B 暂时和 nextA 撞名（极少），先迁到临时再迁到 nextB
         if (oldB === nextA) {
           migrateAuthorName(oldB, "__nick_tmp__");
           data.nickA = nextA;
@@ -1450,7 +1522,7 @@ document.addEventListener("DOMContentLoaded", function () {
         saveData();
         applyAuthorLabels();
         renderAll();
-        showToast("称呼已更新");
+        showToast("已保存：我是「" + getMyNick() + "」");
       });
     }
     var resetNicksBtn = document.getElementById("btn-reset-nicks");
@@ -2323,6 +2395,9 @@ document.addEventListener("DOMContentLoaded", function () {
                     : "";
       var form = formId ? document.getElementById(formId) : null;
       if (!form) return;
+      if (activeDraft.kind === "sweets" || activeDraft.kind === "sweet-reply") {
+        syncVoiceToAuthor(form);
+      }
       saveDraftFromForm(
         activeDraft.kind,
         activeDraft.id,
@@ -3086,16 +3161,23 @@ document.addEventListener("DOMContentLoaded", function () {
     setModalTitle("modal-sweet-title", item ? "编辑想说的话" : "想对你说");
     var form = document.getElementById("form-sweet");
     form.reset();
+    applyAuthorLabels();
     if (item) {
-      form.author.value = item.author || getNickA();
       form.date.value = item.date || "";
       form.note.value = item.note || "";
+      setVoiceFromAuthor(form, item.author || getMyNick());
     } else {
       form.date.value = todayStr();
-      form.author.value = getNickA();
+      setVoiceFromAuthor(form, getMyNick());
     }
+    syncVoiceToAuthor(form);
     setActiveDraft("sweets", editingId);
     restoreDraftToForm("sweets", editingId, form);
+    // 草稿若带了旧 author，再按 author 对齐 voice
+    if (form.elements.author && form.elements.author.value) {
+      setVoiceFromAuthor(form, form.elements.author.value);
+    }
+    syncVoiceToAuthor(form);
     snapshotDraftBaseline(form);
     sweetModal.hidden = false;
     form.note.focus();
@@ -3126,6 +3208,7 @@ document.addEventListener("DOMContentLoaded", function () {
     form.reset();
     form.parentId.value = parentId;
     form.replyId.value = reply ? reply.id : "";
+    applyAuthorLabels();
     var quote = document.getElementById("sweet-reply-quote");
     if (quote) {
       var preview = (parent.note || "").trim();
@@ -3136,16 +3219,14 @@ document.addEventListener("DOMContentLoaded", function () {
       quote.hidden = !preview;
     }
     if (reply) {
-      form.author.value = reply.author || getNickA();
       form.date.value = reply.date || todayStr();
       form.note.value = reply.note || "";
+      setVoiceFromAuthor(form, reply.author || getMyNick());
     } else {
-      // 默认选对方
-      if (parent.author === getNickA()) form.author.value = getNickB();
-      else if (parent.author === getNickB()) form.author.value = getNickA();
-      else form.author.value = getNickA();
       form.date.value = todayStr();
+      setVoiceFromAuthor(form, getMyNick());
     }
+    syncVoiceToAuthor(form);
     setActiveDraft("sweet-reply", replyEditing.replyId || null, parentId);
     restoreDraftToForm(
       "sweet-reply",
@@ -3153,6 +3234,10 @@ document.addEventListener("DOMContentLoaded", function () {
       form,
       parentId
     );
+    if (form.elements.author && form.elements.author.value) {
+      setVoiceFromAuthor(form, form.elements.author.value);
+    }
+    syncVoiceToAuthor(form);
     snapshotDraftBaseline(form);
     sweetReplyModal.hidden = false;
     form.note.focus();
@@ -3265,10 +3350,21 @@ document.addEventListener("DOMContentLoaded", function () {
     if (e.target.closest("[data-close-fight-modal]")) closeFightModal();
   });
 
+  document.body.addEventListener("change", function (e) {
+    if (!e.target || e.target.name !== "voice") return;
+    var form = e.target.closest("form");
+    if (!form) return;
+    syncVoiceToAuthor(form);
+    if (form.id === "form-sweet" || form.id === "form-sweet-reply") {
+      queueActiveDraftSave();
+    }
+  });
+
   var formSweetReply = document.getElementById("form-sweet-reply");
   if (formSweetReply) {
     formSweetReply.addEventListener("submit", function (e) {
       e.preventDefault();
+      syncVoiceToAuthor(formSweetReply);
       var fd = new FormData(formSweetReply);
       var parentId = (fd.get("parentId") || replyEditing.parentId || "").toString();
       var replyId = (fd.get("replyId") || replyEditing.replyId || "").toString();
@@ -3971,7 +4067,8 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       if (type === "sweets") {
-        fields.author = (fd.get("author") || "").toString();
+        syncVoiceToAuthor(form);
+        fields.author = (form.elements.author && form.elements.author.value) || getMyNick();
         fields.title = "";
       }
 

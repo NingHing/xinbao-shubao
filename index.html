@@ -54,9 +54,9 @@
 
       <section class="settings-section" aria-labelledby="settings-nicks-heading">
         <h3 id="settings-nicks-heading" class="settings-section-title">我们的称呼</h3>
-        <p class="settings-hint">用在「来自谁」里。默认是馨宝与树宝；改名后，日记里旧名字会一起更新。</p>
+        <p class="settings-hint">日记本里两个人的名字。再选「这台手机上我是谁」——馨宝的手机选馨宝，树宝的手机选树宝。</p>
         <form id="settings-nicks-form" class="settings-form">
-          <label class="settings-label" for="settings-nick-a">昵称一</label>
+          <label class="settings-label" for="settings-nick-a">昵称一（默认馨宝）</label>
           <input
             id="settings-nick-a"
             class="settings-input"
@@ -65,7 +65,7 @@
             placeholder="馨宝"
             autocomplete="off"
           />
-          <label class="settings-label" for="settings-nick-b">昵称二</label>
+          <label class="settings-label" for="settings-nick-b">昵称二（默认树宝）</label>
           <input
             id="settings-nick-b"
             class="settings-input"
@@ -74,6 +74,18 @@
             placeholder="树宝"
             autocomplete="off"
           />
+          <p class="settings-label" id="settings-my-role-label">这台手机上，我是</p>
+          <div class="anni-kind-chips" role="radiogroup" aria-labelledby="settings-my-role-label">
+            <label class="anni-kind-chip">
+              <input type="radio" name="my-role" value="a" id="settings-role-a" checked />
+              <span id="settings-role-a-label">馨宝</span>
+            </label>
+            <label class="anni-kind-chip">
+              <input type="radio" name="my-role" value="b" id="settings-role-b" />
+              <span id="settings-role-b-label">树宝</span>
+            </label>
+          </div>
+          <p class="settings-hint">选好后，「想对你说」会默认用你的名字，只需再选要不要写成「我们」。</p>
           <div class="settings-actions">
             <button type="submit" class="btn">保存称呼</button>
             <button type="button" class="btn btn-ghost" id="btn-reset-nicks">恢复默认</button>
@@ -393,13 +405,20 @@
       <div class="modal-panel" role="dialog" aria-labelledby="modal-sweet-title">
         <h3 id="modal-sweet-title">想对你说</h3>
         <form class="entry-form entry-form--modal" id="form-sweet" data-type="sweets">
-          <label class="full">谁写的
-            <select name="author" class="author-select" required>
-              <option data-nick-slot="a" value="馨宝">馨宝</option>
-              <option data-nick-slot="b" value="树宝">树宝</option>
-              <option value="我们">我们</option>
-            </select>
-          </label>
+          <input type="hidden" name="author" id="sweet-author-hidden" value="馨宝" />
+          <fieldset class="full anni-kind-field">
+            <legend class="anni-kind-legend">谁写的</legend>
+            <div class="anni-kind-chips" role="radiogroup" aria-label="谁写的">
+              <label class="anni-kind-chip">
+                <input type="radio" name="voice" value="me" checked />
+                <span data-voice-me-label>我（馨宝）</span>
+              </label>
+              <label class="anni-kind-chip">
+                <input type="radio" name="voice" value="us" />
+                <span>我们</span>
+              </label>
+            </div>
+          </fieldset>
           <label class="full">日期<input name="date" type="date" required /></label>
           <label class="full">内容<textarea name="note" rows="3" required placeholder="想说的话写在这里…"></textarea></label>
           <div class="modal-actions">
@@ -418,13 +437,20 @@
         <form class="entry-form entry-form--modal" id="form-sweet-reply">
           <input type="hidden" name="parentId" value="" />
           <input type="hidden" name="replyId" value="" />
-          <label class="full">谁回复
-            <select name="author" class="author-select" required>
-              <option data-nick-slot="a" value="馨宝">馨宝</option>
-              <option data-nick-slot="b" value="树宝">树宝</option>
-              <option value="我们">我们</option>
-            </select>
-          </label>
+          <input type="hidden" name="author" id="sweet-reply-author-hidden" value="馨宝" />
+          <fieldset class="full anni-kind-field">
+            <legend class="anni-kind-legend">谁回复</legend>
+            <div class="anni-kind-chips" role="radiogroup" aria-label="谁回复">
+              <label class="anni-kind-chip">
+                <input type="radio" name="voice" value="me" checked />
+                <span data-voice-me-label>我（馨宝）</span>
+              </label>
+              <label class="anni-kind-chip">
+                <input type="radio" name="voice" value="us" />
+                <span>我们</span>
+              </label>
+            </div>
+          </fieldset>
           <label class="full">日期<input name="date" type="date" required /></label>
           <label class="full">回复内容<textarea name="note" rows="3" required placeholder="想回的话写在这里…"></textarea></label>
           <div class="modal-actions">
@@ -753,7 +779,7 @@
     })();
   </script>
   <script src="seed-data.js?v=20260713-recover-sweets"></script>
-  <script src="script.js?v=nicknames-v1"></script>
+  <script src="script.js?v=my-role-v1"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", function () {
