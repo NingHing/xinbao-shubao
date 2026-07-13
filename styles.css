@@ -760,6 +760,8 @@ body.is-locked .app-settings-btn {
   gap: 0.65rem;
   width: 100%;
   align-items: stretch;
+  overflow: visible;
+  padding: 0.35rem 0.35rem 0.15rem;
   animation: rise 0.8s ease 0.1s both;
 }
 
@@ -771,6 +773,7 @@ body.is-locked .app-settings-btn {
 
 .tile {
   position: relative;
+  overflow: visible;
   aspect-ratio: 1 / 1;
   width: 100%;
   display: flex;
@@ -791,19 +794,24 @@ body.is-locked .app-settings-btn {
 
 .tile-badge {
   position: absolute;
-  top: 0.4rem;
-  right: 0.4rem;
-  min-width: 1.15rem;
-  height: 1.15rem;
-  padding: 0 0.3rem;
+  top: 0;
+  right: 0;
+  z-index: 2;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  padding: 0 0.35rem;
   border-radius: 999px;
-  background: var(--rose-deep);
+  background: #e11d48;
   color: #fff;
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  line-height: 1.15rem;
+  line-height: 1.35rem;
   text-align: center;
-  box-shadow: 0 2px 8px rgba(196, 95, 122, 0.35);
+  letter-spacing: 0;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 8px rgba(190, 18, 60, 0.45);
+  transform: translate(28%, -28%);
+  pointer-events: none;
 }
 
 .tile-badge[hidden] {
