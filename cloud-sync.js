@@ -87,17 +87,48 @@ window.XinbaoCloud = (function () {
       pair = null;
       return Promise.resolve(null);
     }
-    return c
-      .from("pairs")
-      .select("id, invite_code, owner_id, partner_id")
-      .or("owner_id.eq." + user.id + ",partner_id.eq." + user.id)
-      .limit(1)
-      .maybeSingle()
-      .then(function (res) {
-        if (res.error) throw res.error;
-        pair = res.data || null;
-        return pair;
+
+    // 分开查 owner / partner，避免 UUID 写在 or() 里解析失败，
+    // 也避免测试时多条记录导致 maybeSingle 报错。
+    return Promise.all([
+      c
+        .from("pairs")
+        .select("id, invite_code, owner_id, partner_id, created_at")
+        .eq("owner_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(5),
+      c
+        .from("pairs")
+        .select("id, invite_code, owner_id, partner_id, created_at")
+        .eq("partner_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(5)
+    ]).then(function (results) {
+      var ownerRes = results[0];
+      var partnerRes = results[1];
+      if (ownerRes.error) throw ownerRes.error;
+      if (partnerRes.error) throw partnerRes.error;
+
+      var rows = []
+        .concat(ownerRes.data || [])
+        .concat(partnerRes.data || []);
+
+      // 去重
+      var seen = {};
+      var unique = [];
+      rows.forEach(function (row) {
+        if (!row || !row.id || seen[row.id]) return;
+        seen[row.id] = true;
+        unique.push(row);
       });
+
+      // 优先已配对成功的；否则取最近一条
+      var connected = unique.filter(function (row) {
+        return !!row.partner_id;
+      });
+      pair = connected[0] || unique[0] || null;
+      return pair;
+    });
   }
 
   function pullJournal() {
@@ -119,13 +150,13 @@ window.XinbaoCloud = (function () {
       });
   }
 
-  function pushJournal(payload) {
+  function pushJournal(payload, preJson) {
     var c = ensureClient();
     if (!canSync() || !payload) {
       emitStatus(canSync() ? syncState : "local", canSync() ? "" : "未开启云端同步");
       return Promise.resolve();
     }
-    var json = JSON.stringify(payload);
+    var json = preJson || JSON.stringify(payload);
     if (json === lastPushed) {
       emitStatus("synced", "已是最新");
       return Promise.resolve();
@@ -168,18 +199,27 @@ window.XinbaoCloud = (function () {
       });
   }
 
-  function queuePush(payload) {
+  function queuePush(payload, options) {
     if (!canSync()) {
       emitStatus("local", "仅保存在本机");
       return;
     }
+    options = options || {};
+    var json = JSON.stringify(payload);
+    if (json === lastPushed) {
+      emitStatus("synced", "已是最新");
+      return;
+    }
+
     emitStatus("pending", "准备同步…");
     clearTimeout(pushTimer);
+    // 默认很快上传；连续狂点保存时稍作合并，避免卡网络
+    var delay = options.immediate ? 0 : 120;
     pushTimer = setTimeout(function () {
-      pushJournal(payload).catch(function (err) {
+      pushJournal(payload, json).catch(function (err) {
         console.warn("云端同步失败", err);
       });
-    }, 600);
+    }, delay);
   }
 
   function signIn(email, password) {
