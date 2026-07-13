@@ -164,6 +164,9 @@ window.XinbaoCloud = (function () {
         ""
     );
     var code = String((err && (err.code || err.statusCode || err.status)) || "");
+    if (/quota/i.test(m) || /quota/i.test(code)) {
+      return "存储配额已满（照片太大）。请用电脑打开并记→设置→同步最新，先把照片压小后再用手机同步";
+    }
     if (
       code === "413" ||
       /413|payload|too large|request entity|body exceeded|JSON could not be generated|bytes/i.test(
@@ -176,6 +179,98 @@ window.XinbaoCloud = (function () {
       return "网络不稳定，请稍后再试";
     }
     return m || "同步失败";
+  }
+
+  function dataUrlToBlob(dataUrl) {
+    var str = String(dataUrl || "");
+    var parts = str.split(",");
+    if (parts.length < 2) throw new Error("无效图片数据");
+    var mimeMatch = parts[0].match(/:(.*?);/);
+    var mime = (mimeMatch && mimeMatch[1]) || "image/jpeg";
+    var bin = atob(parts[1]);
+    var arr = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    return new Blob([arr], { type: mime });
+  }
+
+  /** 把单张 base64 照片上传到 Storage，返回可公开访问的 URL */
+  function uploadPlacePhoto(dataUrl, placeId) {
+    var c = ensureClient();
+    if (!c || !user || !pair) {
+      return Promise.reject(new Error("未登录或未配对，无法上传照片"));
+    }
+    var blob;
+    try {
+      blob = dataUrlToBlob(dataUrl);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+    var safePlace = String(placeId || "place")
+      .replace(/[^a-zA-Z0-9_-]/g, "")
+      .slice(0, 40);
+    var path =
+      user.id +
+      "/" +
+      pair.id +
+      "/" +
+      safePlace +
+      "/" +
+      Date.now() +
+      "-" +
+      Math.floor(Math.random() * 1e6) +
+      ".jpg";
+
+    return c.storage
+      .from("place-photos")
+      .upload(path, blob, {
+        contentType: "image/jpeg",
+        upsert: false,
+        cacheControl: "31536000"
+      })
+      .then(function (res) {
+        if (res.error) throw res.error;
+        var pub = c.storage.from("place-photos").getPublicUrl(path);
+        var url = pub && pub.data ? pub.data.publicUrl : "";
+        if (!url) throw new Error("照片上传成功但未拿到链接");
+        return url;
+      });
+  }
+
+  /**
+   * 把日记里的 data:image 迁到 Storage。
+   * 若 bucket 未建好 / 配额不足，返回 ok:false，由上层决定是否去掉内嵌照片再同步。
+   */
+  function migrateEmbeddedPhotos(journal) {
+    var clone = JSON.parse(JSON.stringify(journal || {}));
+    var tasks = [];
+    var changed = false;
+    var failures = 0;
+
+    (clone.places || []).forEach(function (place) {
+      if (!place || !Array.isArray(place.photos)) return;
+      place.photos.forEach(function (src, idx) {
+        if (typeof src !== "string" || src.indexOf("data:image") !== 0) return;
+        tasks.push(
+          uploadPlacePhoto(src, place.id || "place")
+            .then(function (url) {
+              place.photos[idx] = url;
+              changed = true;
+            })
+            .catch(function () {
+              failures += 1;
+            })
+        );
+      });
+    });
+
+    if (!tasks.length) {
+      return Promise.resolve({ journal: clone, changed: false, failures: 0 });
+    }
+
+    emitStatus("syncing", "正在把足迹照片上传到云相册…");
+    return Promise.all(tasks).then(function () {
+      return { journal: clone, changed: changed, failures: failures };
+    });
   }
 
   function pushJournal(payload, preJson) {
@@ -425,6 +520,8 @@ window.XinbaoCloud = (function () {
     pullJournal: pullJournal,
     pushJournal: pushJournal,
     queuePush: queuePush,
+    uploadPlacePhoto: uploadPlacePhoto,
+    migrateEmbeddedPhotos: migrateEmbeddedPhotos,
     onStatusChange: onStatusChange,
     getSyncState: getSyncState,
     friendlyAuthError: friendlyAuthError

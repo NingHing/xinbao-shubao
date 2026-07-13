@@ -580,7 +580,21 @@ document.addEventListener("DOMContentLoaded", function () {
     } catch (err) {}
     if (applied === ver) return;
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(seed.data));
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(seed.data));
+      } catch (quotaErr) {
+        var slimSeed = seed.data;
+        try {
+          // seed 可能含大图：超配额时仍写入版本号，避免反复灌入
+          slimSeed = JSON.parse(JSON.stringify(seed.data));
+          (slimSeed.places || []).forEach(function (place) {
+            if (place) place.photos = [];
+          });
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(slimSeed));
+        } catch (err2) {
+          throw quotaErr;
+        }
+      }
       localStorage.setItem(SEED_VERSION_KEY, ver);
     } catch (err) {
       console.warn("发布快照写入失败", err);
@@ -674,7 +688,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function saveData() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    persistLocalData(data);
     if (window.XinbaoCloud && XinbaoCloud.canSync()) {
       // 先拉云端合并，再上传——避免两人各写各的时「后上传的整本盖掉先上传的」
       queueMergePush({ immediate: true });
@@ -687,6 +701,53 @@ document.addEventListener("DOMContentLoaded", function () {
   // 云端整本 JSON 过大时（常见于足迹 base64 照片）会同步失败
   var CLOUD_PAYLOAD_SOFT_LIMIT = 850000;
   var CLOUD_PAYLOAD_HARD_LIMIT = 1200000;
+
+  function isQuotaError(err) {
+    if (!err) return false;
+    var name = String(err.name || "");
+    var msg = String(err.message || err || "");
+    return name === "QuotaExceededError" || /quota/i.test(msg);
+  }
+
+  /** 去掉内嵌 base64 照片，保留 http(s) 云相册链接 */
+  function stripEmbeddedPhotos(journal) {
+    var clone = JSON.parse(JSON.stringify(journal || {}));
+    var removed = 0;
+    (clone.places || []).forEach(function (place) {
+      if (!place) return;
+      var kept = [];
+      (place.photos || []).forEach(function (src) {
+        if (typeof src === "string" && /^https?:\/\//i.test(src)) {
+          kept.push(src);
+        } else if (typeof src === "string" && src.indexOf("data:") === 0) {
+          removed += 1;
+        }
+      });
+      place.photos = kept;
+    });
+    return { journal: clone, removed: removed };
+  }
+
+  /** 本机保存：手机 localStorage 很小，超配额时自动去掉大图以免整站挂掉 */
+  function persistLocalData(journal) {
+    var payload = journal || data;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      return payload;
+    } catch (err) {
+      if (!isQuotaError(err)) throw err;
+      var slim = stripEmbeddedPhotos(payload).journal;
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(slim));
+        showToast("手机存储快满了，已先保存不含大图的版本");
+        return slim;
+      } catch (err2) {
+        throw new Error(
+          "手机存储配额已满。请用电脑打开并记同步一次（压缩照片），再回手机点「重新加载页面」"
+        );
+      }
+    }
+  }
 
   function queueMergePush(options) {
     options = options || {};
@@ -792,32 +853,72 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function ensureCloudPayload(journal) {
-    var json = JSON.stringify(journal || {});
-    if (json.length <= CLOUD_PAYLOAD_SOFT_LIMIT) {
-      return Promise.resolve({ journal: journal, shrunk: false, size: json.length });
-    }
-    if (window.XinbaoCloud && XinbaoCloud.emitStatus) {
-      // optional - may not exist
-    }
+    var originalSize = JSON.stringify(journal || {}).length;
     try {
-      showToast("照片较大，正在压缩以便同步…");
+      showToast("正在处理足迹照片以便同步…");
     } catch (err) {}
-    return shrinkJournalPhotos(journal, CLOUD_PAYLOAD_SOFT_LIMIT).then(function (
-      shrunk
-    ) {
-      var size = JSON.stringify(shrunk).length;
-      if (size > CLOUD_PAYLOAD_HARD_LIMIT) {
-        var err = new Error(
-          "足迹照片总大小仍超出云端限制，请每条少放几张后再同步"
-        );
-        throw err;
-      }
-      return {
-        journal: shrunk,
-        shrunk: size < json.length,
-        size: size
-      };
-    });
+
+    return shrinkJournalPhotos(journal, CLOUD_PAYLOAD_SOFT_LIMIT)
+      .then(function (shrunk) {
+        if (
+          window.XinbaoCloud &&
+          typeof XinbaoCloud.migrateEmbeddedPhotos === "function" &&
+          XinbaoCloud.canSync()
+        ) {
+          return XinbaoCloud.migrateEmbeddedPhotos(shrunk).then(function (res) {
+            return res && res.journal ? res.journal : shrunk;
+          }).catch(function () {
+            return shrunk;
+          });
+        }
+        return shrunk;
+      })
+      .then(function (localJournal) {
+        var size = JSON.stringify(localJournal).length;
+        // 仍含大量 base64 或整体过大：云端只传瘦身版，本机尽量保留照片
+        var hasEmbedded = JSON.stringify(localJournal).indexOf("data:image") !== -1;
+        if (size <= CLOUD_PAYLOAD_SOFT_LIMIT && !hasEmbedded) {
+          return {
+            localJournal: localJournal,
+            cloudJournal: localJournal,
+            changed: size < originalSize || hasEmbedded
+          };
+        }
+        if (size <= CLOUD_PAYLOAD_SOFT_LIMIT && hasEmbedded) {
+          // 有 base64 但体积还行：尽量仍上传；若失败上层会再处理
+          return {
+            localJournal: localJournal,
+            cloudJournal: localJournal,
+            changed: size < originalSize
+          };
+        }
+        var safe = stripEmbeddedPhotos(localJournal);
+        try {
+          showToast(
+            safe.removed
+              ? "照片过大，文字足迹会先同步到云端；大图留在本机"
+              : "正在上传精简版日记…"
+          );
+        } catch (err) {}
+        return {
+          localJournal: localJournal,
+          cloudJournal: safe.journal,
+          changed: true,
+          stripped: !!safe.removed
+        };
+      })
+      .then(function (ready) {
+        var cloudSize = JSON.stringify(ready.cloudJournal).length;
+        if (cloudSize > CLOUD_PAYLOAD_HARD_LIMIT) {
+          var safer = stripEmbeddedPhotos(ready.cloudJournal);
+          ready.cloudJournal = safer.journal;
+          ready.stripped = true;
+        }
+        ready.changed =
+          ready.changed ||
+          JSON.stringify(ready.localJournal).length < originalSize;
+        return ready;
+      });
   }
 
   function runMergePush() {
@@ -837,7 +938,12 @@ document.addEventListener("DOMContentLoaded", function () {
             mergeJournalPayload(localSnapshot, remote)
           );
           data = merged;
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+          try {
+            persistLocalData(data);
+          } catch (err) {
+            // 手机存不下大图时，内存里仍保留合并结果，至少界面能用
+            console.warn(err);
+          }
           try {
             renderAll();
             if (document.body.dataset.view === "anniversaries") {
@@ -848,20 +954,29 @@ document.addEventListener("DOMContentLoaded", function () {
           data = purgeDeleted(data || localSnapshot);
         }
         return ensureCloudPayload(data).then(function (ready) {
-          if (ready.shrunk) {
-            data = ready.journal;
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+          if (ready.localJournal) {
+            data = ready.localJournal;
+            try {
+              persistLocalData(data);
+            } catch (err) {
+              console.warn(err);
+            }
             try {
               renderAll();
             } catch (err) {}
           }
-          return XinbaoCloud.pushJournal(data);
+          return XinbaoCloud.pushJournal(ready.cloudJournal || data);
         });
       })
       .catch(function (err) {
         console.warn("合并同步失败", err);
         try {
-          showToast((err && err.message) || "同步失败，请稍后再试");
+          var msg = (err && err.message) || "同步失败，请稍后再试";
+          if (isQuotaError(err) || /quota/i.test(msg)) {
+            msg =
+              "存储配额已满。请用电脑打开并记→设置→同步最新（会自动压缩/外传照片），再回手机重新加载";
+          }
+          showToast(msg);
         } catch (e) {}
       })
       .then(function () {
@@ -1109,7 +1224,11 @@ document.addEventListener("DOMContentLoaded", function () {
             "\n\n确定导入吗？";
           if (!window.confirm(preview)) return;
 
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(incoming));
+          try {
+            persistLocalData(incoming);
+          } catch (err) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(stripEmbeddedPhotos(incoming).journal));
+          }
           data = loadData();
           reindexOrders(data.anniversaries);
           applySiteTitle();
@@ -1174,17 +1293,25 @@ document.addEventListener("DOMContentLoaded", function () {
               } else {
                 data = purgeDeleted(data || localSnapshot);
               }
-              localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+              try {
+                persistLocalData(data);
+              } catch (err) {
+                console.warn(err);
+              }
               applySiteTitle();
               renderAll();
               renderPairPanel();
               return ensureCloudPayload(data).then(function (ready) {
-                if (ready.shrunk) {
-                  data = ready.journal;
-                  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+                if (ready.localJournal) {
+                  data = ready.localJournal;
+                  try {
+                    persistLocalData(data);
+                  } catch (err) {
+                    console.warn(err);
+                  }
                   renderAll();
                 }
-                return XinbaoCloud.pushJournal(data);
+                return XinbaoCloud.pushJournal(ready.cloudJournal || data);
               });
             })
             .then(function () {
@@ -1192,7 +1319,12 @@ document.addEventListener("DOMContentLoaded", function () {
             })
             .catch(function (err) {
               console.warn(err);
-              done((err && err.message) || "同步失败，请稍后再试");
+              var msg = (err && err.message) || "同步失败，请稍后再试";
+              if (isQuotaError(err) || /quota/i.test(msg)) {
+                msg =
+                  "存储配额已满。请用电脑同步一次压缩照片后，再回手机重新加载";
+              }
+              done(msg);
             });
         } catch (err) {
           softRefreshBtn.disabled = false;
@@ -1234,7 +1366,11 @@ document.addEventListener("DOMContentLoaded", function () {
                   var merged = applyRecoveredSweets(
                     mergeJournalPayload(loadData(), payload)
                   );
-                  localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+                  try {
+                    persistLocalData(merged);
+                  } catch (err) {
+                    console.warn(err);
+                  }
                   data = loadData();
                   applySiteTitle();
                   reindexOrders(data.anniversaries);
@@ -1307,7 +1443,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 var merged = applyRecoveredSweets(
                   mergeJournalPayload(loadData(), payload)
                 );
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+                try {
+                  persistLocalData(merged);
+                } catch (err) {
+                  console.warn(err);
+                }
                 data = loadData();
                 reindexOrders(data.anniversaries);
                 saveData();
@@ -1360,7 +1500,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 var merged = applyRecoveredSweets(
                   mergeJournalPayload(loadData(), payload)
                 );
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+                try {
+                  persistLocalData(merged);
+                } catch (err) {
+                  console.warn(err);
+                }
                 data = loadData();
                 reindexOrders(data.anniversaries);
                 renderAll();
@@ -1412,21 +1556,30 @@ document.addEventListener("DOMContentLoaded", function () {
         setPairMsg("正在同步…");
         ensureCloudPayload(data)
           .then(function (ready) {
-            if (ready.shrunk) {
-              data = ready.journal;
-              localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            if (ready.localJournal) {
+              data = ready.localJournal;
+              try {
+                persistLocalData(data);
+              } catch (err) {
+                console.warn(err);
+              }
               try {
                 renderAll();
               } catch (err) {}
             }
-            return XinbaoCloud.pushJournal(data);
+            return XinbaoCloud.pushJournal(ready.cloudJournal || data);
           })
           .then(function () {
             setPairMsg("已同步到云端", true);
             showToast("已同步到云端");
           })
           .catch(function (err) {
-            setPairMsg((err && err.message) || "同步失败");
+            var msg = (err && err.message) || "同步失败";
+            if (isQuotaError(err) || /quota/i.test(msg)) {
+              msg =
+                "存储配额已满。请减少足迹照片后，在电脑上再点同步最新";
+            }
+            setPairMsg(msg);
           });
       });
     }
@@ -3519,7 +3672,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 var merged = applyRecoveredSweets(
                   mergeJournalPayload(loadData(), payload)
                 );
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+                try {
+                  persistLocalData(merged);
+                } catch (err) {
+                  console.warn(err);
+                }
               } else {
                 applyPublishedSeedIfNeeded();
               }
