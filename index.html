@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600&family=Noto+Serif+SC:wght@500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=soft-rose-deep-v1" />
+  <link rel="stylesheet" href="styles.css?v=home-compact-v1" />
 </head>
 <body class="is-locked" data-view="home">
   <!-- App 顶栏：设置入口（解锁后显示） -->
@@ -213,7 +213,7 @@
     </div>
   </div>
 
-  <!-- ========== 首页：五个正方形入口 ========== -->
+  <!-- ========== 首页：五个入口 ========== -->
   <div id="view-home" class="view view-home is-active">
     <header class="home-hero">
       <p class="hero-kicker">二人一本</p>
@@ -224,25 +224,6 @@
       <p class="hero-days">在一起第 <span id="days-together">0</span> 天</p>
       <p class="hero-status" id="privacy-note">私密日记</p>
     </header>
-
-    <section class="home-activity" id="home-activity" hidden aria-label="新动态">
-      <div class="activity-head">
-        <div>
-          <p class="activity-kicker">NEW</p>
-          <h2 class="activity-title">新动态</h2>
-        </div>
-        <button type="button" class="btn btn-ghost btn-mini-bar" id="btn-mark-all-seen">全部已读</button>
-      </div>
-      <ul class="activity-list" id="list-activity"></ul>
-    </section>
-
-    <section class="home-reminders" aria-label="即将到来的日子">
-      <div class="reminders-head">
-        <p class="reminders-kicker">UPCOMING</p>
-        <h2 class="reminders-title">即将到来</h2>
-      </div>
-      <ul class="reminder-list" id="list-reminders"></ul>
-    </section>
 
     <nav class="tile-grid" aria-label="功能入口">
       <a class="tile" href="#anniversaries" data-module="anniversaries">
@@ -271,6 +252,49 @@
         <span class="tile-name">和解</span>
       </a>
     </nav>
+
+    <section class="home-activity" id="home-activity" hidden aria-label="新动态">
+      <button
+        type="button"
+        class="home-section-summary"
+        id="activity-summary"
+        data-home-section-toggle="activity"
+        aria-expanded="false"
+        aria-controls="activity-body"
+      >
+        <span class="home-section-summary-main">
+          <span class="home-section-kicker">NEW</span>
+          <span class="home-section-summary-title">新动态</span>
+        </span>
+        <span class="home-section-summary-meta" id="activity-summary-meta">暂无</span>
+      </button>
+      <div class="home-section-body" id="activity-body">
+        <div class="activity-head activity-head--tools">
+          <button type="button" class="btn btn-ghost btn-mini-bar" id="btn-mark-all-seen">全部已读</button>
+        </div>
+        <ul class="activity-list" id="list-activity"></ul>
+      </div>
+    </section>
+
+    <section class="home-reminders" id="home-reminders" aria-label="即将到来的日子">
+      <button
+        type="button"
+        class="home-section-summary"
+        id="reminders-summary"
+        data-home-section-toggle="reminders"
+        aria-expanded="false"
+        aria-controls="reminders-body"
+      >
+        <span class="home-section-summary-main">
+          <span class="home-section-kicker">UPCOMING</span>
+          <span class="home-section-summary-title">即将到来</span>
+        </span>
+        <span class="home-section-summary-meta" id="reminders-summary-meta">查看</span>
+      </button>
+      <div class="home-section-body" id="reminders-body">
+        <ul class="reminder-list" id="list-reminders"></ul>
+      </div>
+    </section>
   </div>
 
 
@@ -799,7 +823,7 @@
     })();
   </script>
   <script src="seed-data.js?v=20260713-recover-sweets"></script>
-  <script src="script.js?v=activity-fold-v1"></script>
+  <script src="script.js?v=home-compact-v1"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", function () {

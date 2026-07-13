@@ -535,7 +535,7 @@ body.is-locked .app-settings-btn {
 .home-activity {
   width: 100%;
   margin: 0 0 1.2rem;
-  padding: 0.9rem 1rem 1rem;
+  padding: 0.55rem 0.75rem 0.65rem;
   background: rgba(255, 255, 255, 0.8);
   border: 1px solid rgba(196, 107, 130, 0.28);
   border-radius: 24px;
@@ -546,12 +546,70 @@ body.is-locked .app-settings-btn {
   display: none !important;
 }
 
+.home-section-summary {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.45rem 0.25rem;
+  border: none;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.home-section-summary-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.home-section-kicker {
+  font-size: 0.62rem;
+  letter-spacing: 0.28em;
+  color: var(--gold);
+}
+
+.home-section-summary-title {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--rose-deep);
+}
+
+.home-section-summary-meta {
+  flex-shrink: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+
+.home-section-body {
+  display: none;
+  padding-top: 0.35rem;
+}
+
+.home-activity.is-open .home-section-body,
+.home-reminders.is-open .home-section-body {
+  display: block;
+}
+
 .activity-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 0.75rem;
   margin-bottom: 0.55rem;
+}
+
+.activity-head--tools {
+  justify-content: flex-end;
+  margin-bottom: 0.4rem;
 }
 
 .activity-kicker {
@@ -640,11 +698,15 @@ body.is-locked .app-settings-btn {
 .home-reminders {
   width: 100%;
   margin: 0 0 1.35rem;
-  padding: 0.95rem 1rem 0.85rem;
+  padding: 0.55rem 0.75rem 0.65rem;
   background: rgba(255, 255, 255, 0.72);
   border: 1px solid rgba(196, 107, 130, 0.22);
   border-radius: 24px;
   animation: rise 0.8s ease 0.05s both;
+}
+
+.home-reminders[hidden] {
+  display: none !important;
 }
 
 .reminders-head {
@@ -1864,42 +1926,80 @@ body.is-locked .app-settings-btn {
 @media (max-width: 640px) {
   .view-home {
     justify-content: flex-start;
-    padding-top: 1.25rem;
+    padding-top: 0.85rem;
     min-height: auto;
+    gap: 0;
   }
 
+  .home-hero {
+    margin-bottom: 0.85rem;
+  }
+
+  .hero-kicker,
+  .hero-ornament,
+  .hero-tagline,
+  .hero-sub {
+    display: none;
+  }
+
+  .hero-title {
+    font-size: 2.05rem;
+    letter-spacing: 0.16em;
+    text-indent: 0.16em;
+  }
+
+  .hero-days {
+    margin-top: 0.35rem;
+    font-size: 1.12rem;
+  }
+
+  .hero-status {
+    margin-top: 0.25rem;
+  }
+
+  .home-activity,
   .home-reminders {
-    margin-bottom: 1.1rem;
+    margin-bottom: 0.7rem;
+    padding: 0.35rem 0.65rem 0.45rem;
   }
 
-  /* 手机：两列瓷砖，第 5 个居中 */
+  /* 手机：扁圆角入口，两列紧凑 */
   .tile-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.7rem;
+    gap: 0.55rem;
+    margin-bottom: 0.75rem;
+    padding: 0.15rem 0.1rem;
   }
 
   .tile-grid .tile:nth-child(5) {
     grid-column: 1 / -1;
-    width: min(48%, 11rem);
-    justify-self: center;
+    width: 100%;
+    justify-self: stretch;
   }
 
-
   .tile {
-    border-radius: 24px;
-    gap: 0.4rem;
-    min-height: 0;
-    padding: 0.35rem;
+    aspect-ratio: auto;
+    min-height: 3.15rem;
+    border-radius: 22px;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.55rem 0.8rem;
   }
 
   .tile-name {
-    font-size: 1rem;
-    letter-spacing: 0.04em;
+    font-size: 0.95rem;
+    letter-spacing: 0.06em;
   }
 
   .tile-num {
-    font-size: 0.68rem;
-    letter-spacing: 0.14em;
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+  }
+
+  .tile-badge {
+    transform: translate(18%, -30%);
   }
 }
 
