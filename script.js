@@ -226,6 +226,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
   /** 首次启用：记为 7 天前已读，避免历史条目刷屏，又不会漏掉最近对方写的 */
   function ensureLastSeen() {
+    try {
+      // 旧版用「打开模块=当前时间已读」，会吞掉后同步到的内容；升级时清一次
+      if (!localStorage.getItem("xinbao-shubao-last-seen-fix-v2")) {
+        localStorage.removeItem(LAST_SEEN_KEY);
+        localStorage.setItem("xinbao-shubao-last-seen-fix-v2", "1");
+      }
+    } catch (err) {}
     var seen = loadLastSeen();
     if (seen) return seen;
     var baseline = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -240,17 +247,24 @@ document.addEventListener("DOMContentLoaded", function () {
   function markModuleSeen(module) {
     if (MODULE_KEYS.indexOf(module) < 0) return;
     var seen = ensureLastSeen();
-    seen[module] = new Date().toISOString();
-    saveLastSeen(seen);
+    var maxAt = 0;
+    (data && data[module] ? data[module] : []).forEach(function (item) {
+      var t = itemStamp(item);
+      if (t > maxAt) maxAt = t;
+    });
+    // 本地还没有条目时不要用「现在」标已读，否则稍后同步到的对方内容会被吞掉
+    if (maxAt <= 0) return;
+    var prev = Date.parse(seen[module] || "") || 0;
+    if (maxAt > prev) {
+      seen[module] = new Date(maxAt).toISOString();
+      saveLastSeen(seen);
+    }
   }
 
   function markAllModulesSeen() {
-    var now = new Date().toISOString();
-    var seen = ensureLastSeen();
     MODULE_KEYS.forEach(function (key) {
-      seen[key] = now;
+      markModuleSeen(key);
     });
-    saveLastSeen(seen);
   }
 
   function itemStamp(item) {
