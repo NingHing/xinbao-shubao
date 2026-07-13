@@ -128,10 +128,8 @@ document.addEventListener("DOMContentLoaded", function () {
     var stones = journal.tombstones;
     function keepItem(item) {
       if (!item || !item.id) return true;
-      var delAt = Date.parse(stones[item.id] || "") || 0;
-      if (!delAt) return true;
-      var itemAt = Date.parse(item.updatedAt || "") || 0;
-      return itemAt > delAt;
+      // 一旦标记删除就不再复活（同 id 不会因云端较新 updatedAt 被写回）
+      return !stones[item.id];
     }
     ["anniversaries", "events", "sweets", "places", "fights"].forEach(function (key) {
       journal[key] = (journal[key] || []).filter(keepItem);
@@ -147,6 +145,19 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!data) return;
     if (!data.tombstones || typeof data.tombstones !== "object") data.tombstones = {};
     if (id) data.tombstones[id] = new Date().toISOString();
+  }
+
+  /**
+   * 拉云端期间本机可能又删/改过：合并结果要再与「当前本机」叠一次，
+   * 否则旧快照会把刚删的条目（和 tombstone）盖掉，刷新后又出现。
+   */
+  function mergeRemoteWithLiveLocal(remote, fallbackLocal) {
+    var live = data || fallbackLocal || loadData();
+    var base = fallbackLocal || live;
+    var withRemote = remote
+      ? mergeJournalPayload(base, remote)
+      : purgeDeleted(JSON.parse(JSON.stringify(base)));
+    return applyRecoveredSweets(mergeJournalPayload(live, withRemote));
   }
 
   /** 云端与本机合并：列表按 id；名称等字段按更新时间；尊重删除标记 */
@@ -1025,30 +1036,23 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     mergePushRunning = true;
     mergePushAgain = false;
-    // 深拷贝：避免拉取期间本机又改动，导致合并用到半截状态
+    // 深拷贝起点；拉完后还会与「当前本机」再合并，避免覆盖中途删除
     var localSnapshot = JSON.parse(JSON.stringify(data || loadData()));
     XinbaoCloud.pullJournal()
       .then(function (remote) {
-        if (remote) {
-          var merged = applyRecoveredSweets(
-            mergeJournalPayload(localSnapshot, remote)
-          );
-          data = merged;
-          try {
-            persistLocalData(data);
-          } catch (err) {
-            // 手机存不下大图时，内存里仍保留合并结果，至少界面能用
-            console.warn(err);
-          }
-          try {
-            renderAll();
-            if (document.body.dataset.view === "anniversaries") {
-              renderReminders();
-            }
-          } catch (err) {}
-        } else {
-          data = purgeDeleted(data || localSnapshot);
+        data = mergeRemoteWithLiveLocal(remote, localSnapshot);
+        try {
+          persistLocalData(data);
+        } catch (err) {
+          // 手机存不下大图时，内存里仍保留合并结果，至少界面能用
+          console.warn(err);
         }
+        try {
+          renderAll();
+          if (document.body.dataset.view === "anniversaries") {
+            renderReminders();
+          }
+        } catch (err) {}
         return ensureCloudPayload(data).then(function (ready) {
           if (ready.localJournal) {
             data = ready.localJournal;
@@ -1383,13 +1387,7 @@ document.addEventListener("DOMContentLoaded", function () {
           var localSnapshot = JSON.parse(JSON.stringify(data || loadData()));
           XinbaoCloud.pullJournal()
             .then(function (remote) {
-              if (remote) {
-                data = applyRecoveredSweets(
-                  mergeJournalPayload(localSnapshot, remote)
-                );
-              } else {
-                data = purgeDeleted(data || localSnapshot);
-              }
+              data = mergeRemoteWithLiveLocal(remote, localSnapshot);
               try {
                 persistLocalData(data);
               } catch (err) {
@@ -4012,9 +4010,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
             return XinbaoCloud.pullJournal().then(function (payload) {
               if (payload) {
-                var merged = applyRecoveredSweets(
-                  mergeJournalPayload(loadData(), payload)
-                );
+                var merged = mergeRemoteWithLiveLocal(payload, loadData());
                 try {
                   persistLocalData(merged);
                 } catch (err) {
