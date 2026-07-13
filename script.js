@@ -8,6 +8,8 @@ document.addEventListener("DOMContentLoaded", function () {
   var SEED_VERSION_KEY = "xinbao-shubao-seed-v";
   var LAST_SEEN_KEY = "xinbao-shubao-last-seen-v1";
   var DRAFT_KEY = "xinbao-shubao-drafts-v1";
+  /** 独立保存的删除 id，防止日记 JSON 被云端旧副本盖掉后又复活 */
+  var DELETED_IDS_KEY = "xinbao-shubao-deleted-ids-v1";
   var PRODUCT_NAME = "并记";
   var MODULE_KEYS = ["anniversaries", "events", "sweets", "places", "fights"];
   var MODULE_LABELS = {
@@ -119,6 +121,41 @@ document.addEventListener("DOMContentLoaded", function () {
     return out;
   }
 
+  function readDurableDeletedIds() {
+    try {
+      var raw = localStorage.getItem(DELETED_IDS_KEY);
+      if (!raw) return {};
+      var parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch (err) {
+      return {};
+    }
+  }
+
+  function writeDurableDeletedIds(stones) {
+    try {
+      var prev = readDurableDeletedIds();
+      var out = mergeTombstones(prev, stones || {});
+      localStorage.setItem(DELETED_IDS_KEY, JSON.stringify(out));
+      return out;
+    } catch (err) {
+      console.warn("删除标记写入失败", err);
+      return stones || {};
+    }
+  }
+
+  /** 把独立删除表合并进日记，并清掉已删条目 */
+  function applyDurableDeletes(journal) {
+    if (!journal) return journal;
+    if (!journal.tombstones || typeof journal.tombstones !== "object") {
+      journal.tombstones = {};
+    }
+    var durable = readDurableDeletedIds();
+    journal.tombstones = mergeTombstones(journal.tombstones, durable);
+    writeDurableDeletedIds(journal.tombstones);
+    return purgeDeleted(journal);
+  }
+
   /** 按删除标记清掉已被删除的条目（避免云端旧副本又合并回来） */
   function purgeDeleted(journal) {
     if (!journal) return journal;
@@ -142,9 +179,14 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function markDeleted(id) {
+    if (!id) return;
     if (!data) return;
     if (!data.tombstones || typeof data.tombstones !== "object") data.tombstones = {};
-    if (id) data.tombstones[id] = new Date().toISOString();
+    var at = new Date().toISOString();
+    data.tombstones[id] = at;
+    var one = {};
+    one[id] = at;
+    writeDurableDeletedIds(one);
   }
 
   /**
@@ -157,7 +199,31 @@ document.addEventListener("DOMContentLoaded", function () {
     var withRemote = remote
       ? mergeJournalPayload(base, remote)
       : purgeDeleted(JSON.parse(JSON.stringify(base)));
-    return applyRecoveredSweets(mergeJournalPayload(live, withRemote));
+    return applyDurableDeletes(
+      applyRecoveredSweets(mergeJournalPayload(live, withRemote))
+    );
+  }
+
+  /** 删除后立刻把带 tombstone 的整本推上云端（跳过耗时压图，强制上传） */
+  function forcePushAfterDelete() {
+    if (!window.XinbaoCloud || !XinbaoCloud.canSync()) return;
+    var payload = applyDurableDeletes(
+      JSON.parse(JSON.stringify(data || loadData()))
+    );
+    data = payload;
+    try {
+      persistLocalData(data);
+    } catch (err) {
+      console.warn(err);
+    }
+    // 跳过压图/迁相册，优先把删除同步出去
+    ensureCloudPayload._skipMigrate = true;
+    var cloud = stripEmbeddedPhotos(payload).journal;
+    XinbaoCloud.pushJournal(cloud, null, { force: true }).catch(function (err) {
+      console.warn("删除同步失败", err);
+      showToast("删除已记在本机，云端同步失败，请稍后点「同步最新」");
+      queueMergePush({ immediate: true });
+    });
   }
 
   /** 云端与本机合并：列表按 id；名称等字段按更新时间；尊重删除标记 */
@@ -197,7 +263,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     out.tombstones = mergeTombstones(local.tombstones, remote.tombstones);
-    return purgeDeleted(out);
+    return applyDurableDeletes(out);
   }
 
   function sweetStamp(item) {
@@ -692,9 +758,9 @@ document.addEventListener("DOMContentLoaded", function () {
       if (!parsed.tombstones || typeof parsed.tombstones !== "object") {
         parsed.tombstones = {};
       }
-      return purgeDeleted(parsed);
+      return applyDurableDeletes(parsed);
     } catch (err) {
-      return JSON.parse(JSON.stringify(defaultData));
+      return applyDurableDeletes(JSON.parse(JSON.stringify(defaultData)));
     }
   }
 
@@ -742,6 +808,9 @@ document.addEventListener("DOMContentLoaded", function () {
   /** 本机保存：手机 localStorage 很小，超配额时自动去掉大图以免整站挂掉 */
   function persistLocalData(journal) {
     var payload = journal || data;
+    if (payload && payload.tombstones) {
+      writeDurableDeletedIds(payload.tombstones);
+    }
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
       return payload;
@@ -1055,7 +1124,7 @@ document.addEventListener("DOMContentLoaded", function () {
         } catch (err) {}
         return ensureCloudPayload(data).then(function (ready) {
           if (ready.localJournal) {
-            data = ready.localJournal;
+            data = applyDurableDeletes(ready.localJournal);
             try {
               persistLocalData(data);
             } catch (err) {
@@ -1398,7 +1467,7 @@ document.addEventListener("DOMContentLoaded", function () {
               renderPairPanel();
               return ensureCloudPayload(data).then(function (ready) {
                 if (ready.localJournal) {
-                  data = ready.localJournal;
+                  data = applyDurableDeletes(ready.localJournal);
                   try {
                     persistLocalData(data);
                   } catch (err) {
@@ -3938,11 +4007,20 @@ document.addEventListener("DOMContentLoaded", function () {
       return row.id !== delId;
     });
     if (type === "anniversaries") reindexOrders(data.anniversaries);
-    saveData();
+    try {
+      persistLocalData(data);
+    } catch (err) {
+      console.warn(err);
+      showToast("本机存储不足，删除标记已记下，正在尽量同步…");
+    }
     noteLocalWrite(type);
     renderList(type);
     if (type === "anniversaries") renderReminders();
     showToast("已删除");
+    forcePushAfterDelete();
+    if (window.XinbaoCloud && XinbaoCloud.canSync()) {
+      queueMergePush({ immediate: true });
+    }
   });
 
   document.body.addEventListener("click", function (e) {

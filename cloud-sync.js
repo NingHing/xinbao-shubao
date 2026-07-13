@@ -273,19 +273,20 @@ window.XinbaoCloud = (function () {
     });
   }
 
-  function pushJournal(payload, preJson) {
+  function pushJournal(payload, preJson, options) {
+    options = options || {};
     var c = ensureClient();
     if (!canSync() || !payload) {
       emitStatus(canSync() ? syncState : "local", canSync() ? "" : "未开启云端同步");
       return Promise.resolve();
     }
     var json = preJson || JSON.stringify(payload);
-    if (json === lastPushed) {
+    if (!options.force && json === lastPushed) {
       emitStatus("synced", "已是最新");
       return Promise.resolve();
     }
 
-    emitStatus("syncing", "正在上传…");
+    emitStatus("syncing", options.force ? "正在同步删除…" : "正在上传…");
     var row = {
       pair_id: pair.id,
       payload: payload,
