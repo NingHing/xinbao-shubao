@@ -894,8 +894,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
     return start
       .then(function (shrunk) {
+        // 有内嵌照片时优先迁到云相册；保存足迹后会重置 _skipMigrate
         if (
-          hasEmbedded &&
+          journalHasEmbeddedPhotos(shrunk) &&
           !ensureCloudPayload._skipMigrate &&
           window.XinbaoCloud &&
           typeof XinbaoCloud.migrateEmbeddedPhotos === "function" &&
@@ -904,7 +905,6 @@ document.addEventListener("DOMContentLoaded", function () {
           return XinbaoCloud.migrateEmbeddedPhotos(shrunk)
             .then(function (res) {
               var next = res && res.journal ? res.journal : shrunk;
-              // 云相册不可用时，本会话内不再反复尝试，避免一直弹提示
               if (res && res.failures > 0 && !res.changed) {
                 ensureCloudPayload._skipMigrate = true;
               }
@@ -928,20 +928,22 @@ document.addEventListener("DOMContentLoaded", function () {
           };
         }
         if (size <= CLOUD_PAYLOAD_SOFT_LIMIT) {
+          // 仍有 base64 但体积还行：整本带图上传
           return {
             localJournal: localJournal,
             cloudJournal: localJournal,
             changed: size < originalSize || stillEmbedded !== hasEmbedded
           };
         }
+        // 仍然过大：云端只能先不同步内嵌大图（会明确提示）
         var safe = stripEmbeddedPhotos(localJournal);
-        try {
-          showToast(
-            safe.removed
-              ? "照片过大，文字足迹会先同步；大图留在本机"
-              : "正在上传精简版日记…"
-          );
-        } catch (err) {}
+        if (safe.removed) {
+          try {
+            showToast(
+              "照片未能完整同步到云端（另一台可能还看不到）。请少放几张，或配置云相册后再保存"
+            );
+          } catch (err) {}
+        }
         return {
           localJournal: localJournal,
           cloudJournal: safe.journal,
@@ -957,6 +959,61 @@ document.addEventListener("DOMContentLoaded", function () {
           ready.stripped = true;
         }
         return ready;
+      });
+  }
+
+  /** 保存足迹前：尽量把 data:image 上传成云相册链接，这样同步不会把照片剥掉 */
+  function uploadPlacePhotosForSync(photos, placeId) {
+    var list = Array.isArray(photos) ? photos.slice() : [];
+    if (
+      !list.length ||
+      !window.XinbaoCloud ||
+      !XinbaoCloud.canSync() ||
+      typeof XinbaoCloud.uploadPlacePhoto !== "function"
+    ) {
+      return Promise.resolve({
+        photos: list,
+        uploaded: 0,
+        failed: 0,
+        skipped: true
+      });
+    }
+
+    ensureCloudPayload._skipMigrate = false;
+    var uploaded = 0;
+    var failed = 0;
+
+    return list
+      .reduce(function (chain, src) {
+        return chain.then(function (acc) {
+          if (typeof src === "string" && /^https?:\/\//i.test(src)) {
+            acc.push(src);
+            return acc;
+          }
+          if (typeof src !== "string" || src.indexOf("data:image") !== 0) {
+            if (src) acc.push(src);
+            return acc;
+          }
+          return XinbaoCloud.uploadPlacePhoto(src, placeId)
+            .then(function (url) {
+              uploaded += 1;
+              acc.push(url);
+              return acc;
+            })
+            .catch(function () {
+              failed += 1;
+              acc.push(src);
+              return acc;
+            });
+        });
+      }, Promise.resolve([]))
+      .then(function (next) {
+        return {
+          photos: next,
+          uploaded: uploaded,
+          failed: failed,
+          skipped: false
+        };
       });
   }
 
@@ -1309,6 +1366,7 @@ document.addEventListener("DOMContentLoaded", function () {
       softRefreshBtn.addEventListener("click", function () {
         softRefreshBtn.disabled = true;
         showToast("正在同步…");
+        ensureCloudPayload._skipMigrate = false;
         var done = function (msg) {
           softRefreshBtn.disabled = false;
           showToast(msg || "已同步");
@@ -1593,6 +1651,7 @@ document.addEventListener("DOMContentLoaded", function () {
           return;
         }
         setPairMsg("正在同步…");
+        ensureCloudPayload._skipMigrate = false;
         ensureCloudPayload(data)
           .then(function (ready) {
             if (ready.localJournal) {
@@ -3469,6 +3528,7 @@ document.addEventListener("DOMContentLoaded", function () {
           alert("结束日期不能早于开始日期。");
           return;
         }
+        var placeIdForPhotos = isEdit ? editingId : uid();
         var placeFields = {
           title: (fd.get("title") || "").toString().trim(),
           dateStart: dateStart,
@@ -3477,36 +3537,55 @@ document.addEventListener("DOMContentLoaded", function () {
           note: (fd.get("note") || "").toString().trim(),
           photos: pendingPlacePhotos.slice()
         };
+        var saveBtn = form.querySelector('button[type="submit"]');
+        if (saveBtn) saveBtn.disabled = true;
+        showToast("正在保存足迹照片…");
 
-        try {
-          if (isEdit) {
-            var oldPlace = findItem("places", editingId);
-            if (!oldPlace) return;
-            oldPlace.title = placeFields.title;
-            oldPlace.dateStart = placeFields.dateStart;
-            oldPlace.dateEnd = placeFields.dateEnd;
-            oldPlace.cost = placeFields.cost;
-            oldPlace.note = placeFields.note;
-            oldPlace.photos = placeFields.photos;
-            touchUpdatedAt(oldPlace);
-            saveData();
-            noteLocalWrite("places");
-          } else {
-            placeFields.id = uid();
-            touchUpdatedAt(placeFields);
-            data.places.push(placeFields);
-            saveData();
-            noteLocalWrite("places");
-          }
-        } catch (err) {
-          if (!isEdit) data.places.pop();
-          alert("保存失败：照片可能太大或太多，请减少照片后再试。");
-          return;
-        }
-        renderPlaces();
-        clearDraft(draftSlot("places", editingId));
-        closePlaceModal({ skipDraftSave: true });
-        showToast(isEdit ? "已更新足迹" : "已保存足迹");
+        uploadPlacePhotosForSync(placeFields.photos, placeIdForPhotos)
+          .then(function (up) {
+            placeFields.photos = up.photos;
+            pendingPlacePhotos = up.photos.slice();
+            if (up.failed && !up.uploaded) {
+              alert(
+                "照片已保存在这台设备，但没能传到云端，另一台可能暂时看不到。\n\n可以：\n1）在 Supabase 运行 schema-place-photos.sql 开启云相册\n2）每条足迹少放几张后再保存并点「同步最新」"
+              );
+            } else if (up.failed) {
+              showToast("部分照片未传到云端，已尽量保留");
+            }
+
+            try {
+              if (isEdit) {
+                var oldPlace = findItem("places", editingId);
+                if (!oldPlace) return;
+                oldPlace.title = placeFields.title;
+                oldPlace.dateStart = placeFields.dateStart;
+                oldPlace.dateEnd = placeFields.dateEnd;
+                oldPlace.cost = placeFields.cost;
+                oldPlace.note = placeFields.note;
+                oldPlace.photos = placeFields.photos;
+                touchUpdatedAt(oldPlace);
+                saveData();
+                noteLocalWrite("places");
+              } else {
+                placeFields.id = placeIdForPhotos;
+                touchUpdatedAt(placeFields);
+                data.places.push(placeFields);
+                saveData();
+                noteLocalWrite("places");
+              }
+            } catch (err) {
+              if (!isEdit) data.places.pop();
+              alert("保存失败：照片可能太大或太多，请减少照片后再试。");
+              return;
+            }
+            renderPlaces();
+            clearDraft(draftSlot("places", editingId));
+            closePlaceModal({ skipDraftSave: true });
+            showToast(isEdit ? "已更新足迹" : "已保存足迹");
+          })
+          .finally(function () {
+            if (saveBtn) saveBtn.disabled = false;
+          });
         return;
       }
 
