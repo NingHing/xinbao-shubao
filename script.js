@@ -853,8 +853,16 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   // ----- 页面切换（整页切换，不是叠在首页下面）-----
+  var homeScrollY = 0;
+  var currentViewName = "home";
+
   function showView(name) {
     if (!VALID_VIEWS[name]) name = "home";
+
+    // 离开首页前记住滚动位置，返回时恢复，避免手机上每次都要从头滑
+    if (currentViewName === "home" && name !== "home") {
+      homeScrollY = window.scrollY || window.pageYOffset || 0;
+    }
 
     document.querySelectorAll(".view").forEach(function (el) {
       el.classList.remove("is-active");
@@ -869,7 +877,16 @@ document.addEventListener("DOMContentLoaded", function () {
       markModuleSeen(name);
     }
     renderActivity();
-    window.scrollTo({ top: 0, behavior: "smooth" });
+
+    if (name === "home") {
+      var y = homeScrollY || 0;
+      requestAnimationFrame(function () {
+        window.scrollTo(0, y);
+      });
+    } else {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+    currentViewName = name;
   }
 
 
