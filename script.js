@@ -125,14 +125,19 @@ document.addEventListener("DOMContentLoaded", function () {
       journal.tombstones = {};
     }
     var stones = journal.tombstones;
+    function keepItem(item) {
+      if (!item || !item.id) return true;
+      var delAt = Date.parse(stones[item.id] || "") || 0;
+      if (!delAt) return true;
+      var itemAt = Date.parse(item.updatedAt || "") || 0;
+      return itemAt > delAt;
+    }
     ["anniversaries", "events", "sweets", "places", "fights"].forEach(function (key) {
-      journal[key] = (journal[key] || []).filter(function (item) {
-        if (!item || !item.id) return true;
-        var delAt = Date.parse(stones[item.id] || "") || 0;
-        if (!delAt) return true;
-        var itemAt = Date.parse(item.updatedAt || "") || 0;
-        return itemAt > delAt;
-      });
+      journal[key] = (journal[key] || []).filter(keepItem);
+    });
+    (journal.sweets || []).forEach(function (sweet) {
+      if (!sweet) return;
+      sweet.replies = (sweet.replies || []).filter(keepItem);
     });
     return journal;
   }
@@ -151,7 +156,11 @@ document.addEventListener("DOMContentLoaded", function () {
     Object.keys(defaultData).forEach(function (key) {
       if (key === "tombstones") return;
       if (Array.isArray(defaultData[key])) {
-        out[key] = mergeById(remote[key], local[key]);
+        if (key === "sweets") {
+          out[key] = mergeSweetsById(remote[key], local[key]);
+        } else {
+          out[key] = mergeById(remote[key], local[key]);
+        }
         return;
       }
       if (key === "siteTitle" || key === "siteTitleAt") {
@@ -177,6 +186,73 @@ document.addEventListener("DOMContentLoaded", function () {
 
     out.tombstones = mergeTombstones(local.tombstones, remote.tombstones);
     return purgeDeleted(out);
+  }
+
+  function sweetStamp(item) {
+    if (!item) return 0;
+    if (item.updatedAt) {
+      var t = Date.parse(item.updatedAt);
+      if (!isNaN(t)) return t;
+    }
+    var m = String(item.id || "").match(/id-(\d+)/);
+    return m ? Number(m[1]) : 0;
+  }
+
+  function normalizeSweet(item) {
+    if (!item) return item;
+    var note = (item.note || "").trim();
+    var title = (item.title || "").trim();
+    if (!note && title) note = title;
+    return {
+      id: item.id || uid(),
+      author: item.author || "",
+      date: item.date || "",
+      note: note,
+      title: "",
+      updatedAt: item.updatedAt || "",
+      replies: Array.isArray(item.replies)
+        ? item.replies.map(function (r) {
+            return {
+              id: r.id || uid(),
+              author: r.author || "",
+              date: r.date || "",
+              note: (r.note || "").trim(),
+              updatedAt: r.updatedAt || ""
+            };
+          })
+        : []
+    };
+  }
+
+  /** 想对你说：正文按更新时间合并，回复列表按 id 合并，避免两边各回一条时互相覆盖 */
+  function mergeSweetsById(remoteArr, localArr) {
+    var remoteMap = {};
+    var localMap = {};
+    (remoteArr || []).forEach(function (item) {
+      if (item && item.id) remoteMap[item.id] = normalizeSweet(item);
+    });
+    (localArr || []).forEach(function (item) {
+      if (item && item.id) localMap[item.id] = normalizeSweet(item);
+    });
+    var ids = {};
+    Object.keys(remoteMap).forEach(function (id) {
+      ids[id] = true;
+    });
+    Object.keys(localMap).forEach(function (id) {
+      ids[id] = true;
+    });
+    return Object.keys(ids).map(function (id) {
+      var remoteItem = remoteMap[id];
+      var localItem = localMap[id];
+      if (!remoteItem) return localItem;
+      if (!localItem) return remoteItem;
+      var preferLocal = sweetStamp(localItem) >= sweetStamp(remoteItem);
+      var base = preferLocal ? localItem : remoteItem;
+      var other = preferLocal ? remoteItem : localItem;
+      var out = Object.assign({}, other, base);
+      out.replies = mergeById(remoteItem.replies || [], localItem.replies || []);
+      return out;
+    });
   }
 
   function normalizeSiteTitle(title) {
@@ -551,19 +627,9 @@ document.addEventListener("DOMContentLoaded", function () {
           updatedAt: item.updatedAt || ""
         };
       });
-      // 甜蜜想法：去掉旧的自动标题，正文保留在 note
+      // 甜蜜想法：去掉旧的自动标题，正文保留在 note；兼容回复
       parsed.sweets = (parsed.sweets || []).map(function (item) {
-        var note = (item.note || "").trim();
-        var title = (item.title || "").trim();
-        if (!note && title) note = title;
-        return {
-          id: item.id || uid(),
-          author: item.author || "",
-          date: item.date || "",
-          note: note,
-          title: "",
-          updatedAt: item.updatedAt || ""
-        };
+        return normalizeSweet(item);
       });
       // 足迹：兼容旧的单日期字段
       parsed.places = (parsed.places || []).map(function (item) {
@@ -1425,6 +1491,23 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
+  /** 想对你说：日期新→旧；同一天再按写入/更新时间，最新在上 */
+  function sortSweetsDesc(arr) {
+    return arr.slice().sort(function (a, b) {
+      var byDate = (b.date || "").localeCompare(a.date || "");
+      if (byDate !== 0) return byDate;
+      return sweetStamp(b) - sweetStamp(a);
+    });
+  }
+
+  function sortRepliesAsc(arr) {
+    return (arr || []).slice().sort(function (a, b) {
+      var byDate = (a.date || "").localeCompare(b.date || "");
+      if (byDate !== 0) return byDate;
+      return sweetStamp(a) - sweetStamp(b);
+    });
+  }
+
   function sortEvents(arr) {
     return arr.slice().sort(function (a, b) {
       return (b.dateStart || b.date || "").localeCompare(a.dateStart || a.date || "");
@@ -1476,10 +1559,14 @@ document.addEventListener("DOMContentLoaded", function () {
       );
     }
     if (type === "sweets") {
+      var replyHit = (item.replies || []).some(function (r) {
+        return textHasQuery(r.note, q) || textHasQuery(r.author, q);
+      });
       return (
         textHasQuery(item.note, q) ||
         textHasQuery(item.title, q) ||
-        textHasQuery(item.author, q)
+        textHasQuery(item.author, q) ||
+        replyHit
       );
     }
     if (type === "places") {
@@ -1832,7 +1919,7 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
-    var items = sortByDateDesc(
+    var items = (type === "sweets" ? sortSweetsDesc : sortByDateDesc)(
       all.filter(function (item) {
         return itemMatchesFilters(item, type);
       })
@@ -1868,6 +1955,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
       if (type === "sweets") {
         var sweetBody = (item.note || item.title || "").trim();
+        var repliesHtml = renderSweetRepliesHtml(item);
         return (
           '<li class="entry-item entry-item--sweet">' +
           '<div class="entry-top">' +
@@ -1879,9 +1967,15 @@ document.addEventListener("DOMContentLoaded", function () {
           "</p>" +
           "</div>" +
           (sweetBody
-            ? '<p class="entry-note entry-note--sweet">' + escapeText(sweetBody) + "</p>"
+            ? '<p class="entry-note entry-note--sweet">' +
+              escapeText(sweetBody) +
+              "</p>"
             : "") +
+          repliesHtml +
           '<div class="entry-actions">' +
+          '<button type="button" class="btn-mini" data-reply-sweet="' +
+          escapeText(item.id) +
+          '">回复</button>' +
           editButtonHtml(type, item.id) +
           '<button type="button" class="btn-delete" data-type="' +
           type +
@@ -1918,6 +2012,46 @@ document.addEventListener("DOMContentLoaded", function () {
         "</li>"
       );
     }).join("");
+  }
+
+  function renderSweetRepliesHtml(item) {
+    var replies = sortRepliesAsc(item.replies || []);
+    if (!replies.length) return "";
+    return (
+      '<ul class="sweet-replies">' +
+      replies
+        .map(function (reply) {
+          return (
+            '<li class="sweet-reply">' +
+            '<div class="sweet-reply-top">' +
+            '<p class="sweet-reply-meta">' +
+            escapeText(
+              (reply.author ? reply.author : "回复") +
+                (reply.date ? " · " + reply.date : "")
+            ) +
+            "</p>" +
+            '<div class="sweet-reply-actions">' +
+            '<button type="button" class="btn-mini" data-edit-reply="' +
+            escapeText(reply.id) +
+            '" data-parent="' +
+            escapeText(item.id) +
+            '">编辑</button>' +
+            '<button type="button" class="btn-delete" data-delete-reply="' +
+            escapeText(reply.id) +
+            '" data-parent="' +
+            escapeText(item.id) +
+            '">删除</button>' +
+            "</div>" +
+            "</div>" +
+            '<p class="sweet-reply-note">' +
+            escapeText(reply.note || "") +
+            "</p>" +
+            "</li>"
+          );
+        })
+        .join("") +
+      "</ul>"
+    );
   }
 
   function renderAll() {
@@ -2032,6 +2166,69 @@ document.addEventListener("DOMContentLoaded", function () {
     form.note.focus();
   }
 
+  var sweetReplyModal = document.getElementById("modal-sweet-reply");
+  var replyEditing = { parentId: "", replyId: "" };
+
+  function findReply(parent, replyId) {
+    var list = (parent && parent.replies) || [];
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].id === replyId) return list[i];
+    }
+    return null;
+  }
+
+  function openSweetReplyModal(parentId, reply) {
+    var parent = findItem("sweets", parentId);
+    if (!parent) return;
+    if (!Array.isArray(parent.replies)) parent.replies = [];
+    replyEditing.parentId = parentId;
+    replyEditing.replyId = reply ? reply.id : "";
+    setModalTitle(
+      "modal-sweet-reply-title",
+      reply ? "编辑回复" : "回复这条想说的话"
+    );
+    var form = document.getElementById("form-sweet-reply");
+    form.reset();
+    form.parentId.value = parentId;
+    form.replyId.value = reply ? reply.id : "";
+    var quote = document.getElementById("sweet-reply-quote");
+    if (quote) {
+      var preview = (parent.note || "").trim();
+      if (preview.length > 60) preview = preview.slice(0, 60) + "…";
+      quote.textContent = preview
+        ? "回复「" + (parent.author ? parent.author + "：" : "") + preview + "」"
+        : "";
+      quote.hidden = !preview;
+    }
+    if (reply) {
+      form.author.value = reply.author || "馨宝";
+      form.date.value = reply.date || todayStr();
+      form.note.value = reply.note || "";
+    } else {
+      // 默认选对方：若原文是馨宝则默认树宝，反之亦然
+      if (parent.author === "馨宝") form.author.value = "树宝";
+      else if (parent.author === "树宝") form.author.value = "馨宝";
+      else form.author.value = "馨宝";
+      form.date.value = todayStr();
+    }
+    sweetReplyModal.hidden = false;
+    form.note.focus();
+  }
+
+  function closeSweetReplyModal() {
+    if (sweetReplyModal) sweetReplyModal.hidden = true;
+    var form = document.getElementById("form-sweet-reply");
+    if (form) form.reset();
+    replyEditing.parentId = "";
+    replyEditing.replyId = "";
+    setModalTitle("modal-sweet-reply-title", "回复");
+    var quote = document.getElementById("sweet-reply-quote");
+    if (quote) {
+      quote.hidden = true;
+      quote.textContent = "";
+    }
+  }
+
   function openFightModal(item) {
     editingId = item ? item.id : null;
     setModalTitle("modal-fight-title", item ? "编辑和解" : "记一次和解");
@@ -2090,8 +2287,51 @@ document.addEventListener("DOMContentLoaded", function () {
   document.body.addEventListener("click", function (e) {
     if (e.target.closest("[data-close-event-modal]")) closeEventModal();
     if (e.target.closest("[data-close-sweet-modal]")) closeSweetModal();
+    if (e.target.closest("[data-close-sweet-reply-modal]")) closeSweetReplyModal();
     if (e.target.closest("[data-close-fight-modal]")) closeFightModal();
   });
+
+  var formSweetReply = document.getElementById("form-sweet-reply");
+  if (formSweetReply) {
+    formSweetReply.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var fd = new FormData(formSweetReply);
+      var parentId = (fd.get("parentId") || replyEditing.parentId || "").toString();
+      var replyId = (fd.get("replyId") || replyEditing.replyId || "").toString();
+      var parent = findItem("sweets", parentId);
+      if (!parent) return;
+      if (!Array.isArray(parent.replies)) parent.replies = [];
+      var payload = {
+        author: (fd.get("author") || "").toString(),
+        date: (fd.get("date") || "").toString(),
+        note: (fd.get("note") || "").toString().trim()
+      };
+      if (!payload.note) return;
+      if (replyId) {
+        var existing = findReply(parent, replyId);
+        if (!existing) return;
+        existing.author = payload.author;
+        existing.date = payload.date;
+        existing.note = payload.note;
+        touchUpdatedAt(existing);
+      } else {
+        var reply = {
+          id: uid(),
+          author: payload.author,
+          date: payload.date,
+          note: payload.note
+        };
+        touchUpdatedAt(reply);
+        parent.replies.push(reply);
+      }
+      touchUpdatedAt(parent);
+      saveData();
+      noteLocalWrite("sweets");
+      renderList("sweets");
+      closeSweetReplyModal();
+      showToast(replyId ? "已更新回复" : "已回复");
+    });
+  }
 
   // ----- 足迹弹窗 + 照片 -----
   var placeModal = document.getElementById("modal-place");
@@ -2656,6 +2896,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (type === "sweets") {
           entry.author = fields.author;
           entry.title = "";
+          entry.replies = [];
         }
         if (type === "fights") {
           entry.author = fields.author;
@@ -2684,6 +2925,44 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // ----- 编辑 / 删除 / 置顶 / 排序 -----
   document.body.addEventListener("click", function (e) {
+    var replyBtn = e.target.closest("[data-reply-sweet]");
+    if (replyBtn) {
+      openSweetReplyModal(replyBtn.getAttribute("data-reply-sweet"), null);
+      return;
+    }
+
+    var editReplyBtn = e.target.closest("[data-edit-reply]");
+    if (editReplyBtn) {
+      var parentForEdit = findItem("sweets", editReplyBtn.getAttribute("data-parent"));
+      var replyForEdit = findReply(
+        parentForEdit,
+        editReplyBtn.getAttribute("data-edit-reply")
+      );
+      if (parentForEdit && replyForEdit) {
+        openSweetReplyModal(parentForEdit.id, replyForEdit);
+      }
+      return;
+    }
+
+    var delReplyBtn = e.target.closest("[data-delete-reply]");
+    if (delReplyBtn) {
+      var parentIdDel = delReplyBtn.getAttribute("data-parent");
+      var replyIdDel = delReplyBtn.getAttribute("data-delete-reply");
+      var parentDel = findItem("sweets", parentIdDel);
+      if (!parentDel) return;
+      if (!confirm("确定删除这条回复吗？")) return;
+      markDeleted(replyIdDel);
+      parentDel.replies = (parentDel.replies || []).filter(function (r) {
+        return r.id !== replyIdDel;
+      });
+      touchUpdatedAt(parentDel);
+      saveData();
+      noteLocalWrite("sweets");
+      renderList("sweets");
+      showToast("已删除回复");
+      return;
+    }
+
     var editBtn = e.target.closest("[data-edit]");
     if (editBtn) {
       openEdit(editBtn.getAttribute("data-edit"), editBtn.getAttribute("data-id"));

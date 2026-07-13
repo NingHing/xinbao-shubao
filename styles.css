@@ -1060,6 +1060,59 @@ body.is-locked .app-settings-btn {
   margin-bottom: 0.15rem;
 }
 
+.sweet-replies {
+  list-style: none;
+  margin: 0.75rem 0 0.15rem;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.sweet-reply {
+  padding: 0.65rem 0.75rem;
+  border-radius: 12px;
+  background: rgba(248, 238, 242, 0.85);
+  border-left: 3px solid rgba(217, 123, 146, 0.55);
+}
+
+.sweet-reply-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.sweet-reply-meta {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--rose-deep);
+  font-weight: 600;
+}
+
+.sweet-reply-actions {
+  display: flex;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.sweet-reply-note {
+  margin: 0.4rem 0 0;
+  white-space: pre-wrap;
+  line-height: 1.65;
+  color: var(--ink);
+  font-size: 0.95rem;
+}
+
+.modal-quote {
+  margin: 0 0 0.85rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 12px;
+  background: rgba(248, 238, 242, 0.9);
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
 .entry-resolve {
   margin-top: 0.55rem;
   padding-top: 0.55rem;

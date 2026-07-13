@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="icons/icon-180.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=activity-v3" />
+  <link rel="stylesheet" href="styles.css?v=sweet-reply-v1" />
 </head>
 <body class="is-locked" data-view="home">
   <!-- App 顶栏：设置入口（解锁后显示） -->
@@ -367,6 +367,31 @@
         </form>
       </div>
     </div>
+
+    <div class="modal" id="modal-sweet-reply" hidden>
+      <div class="modal-backdrop" data-close-sweet-reply-modal></div>
+      <div class="modal-panel" role="dialog" aria-labelledby="modal-sweet-reply-title">
+        <h3 id="modal-sweet-reply-title">回复</h3>
+        <p class="modal-quote" id="sweet-reply-quote" hidden></p>
+        <form class="entry-form entry-form--modal" id="form-sweet-reply">
+          <input type="hidden" name="parentId" value="" />
+          <input type="hidden" name="replyId" value="" />
+          <label class="full">谁回复
+            <select name="author" required>
+              <option value="馨宝">馨宝</option>
+              <option value="树宝">树宝</option>
+              <option value="我们">我们</option>
+            </select>
+          </label>
+          <label class="full">日期<input name="date" type="date" required /></label>
+          <label class="full">回复内容<textarea name="note" rows="3" required placeholder="想回的话写在这里…"></textarea></label>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-ghost" data-close-sweet-reply-modal>取消</button>
+            <button type="submit" class="btn">发送回复</button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 
   <!-- ========== 子页：足迹 ========== -->
@@ -675,7 +700,7 @@
     })();
   </script>
   <script src="seed-data.js?v=20260713-recover-sweets"></script>
-  <script src="script.js?v=activity-v3"></script>
+  <script src="script.js?v=sweet-reply-v1"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", function () {
