@@ -420,7 +420,12 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
-    if (status) status.textContent = "你们已连接，正在同步同一本日记。";
+    if (status) {
+      status.textContent = "已成功连接，正在同步同一本日记。";
+      status.hidden = false;
+    }
+    if (actions) actions.hidden = true;
+    if (waiting) waiting.hidden = true;
     if (ready) ready.hidden = false;
     if (note) note.textContent = "云端同步已开启 · 双方看到同一本";
     renderSyncStatus(XinbaoCloud.getSyncState());

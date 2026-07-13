@@ -387,6 +387,25 @@ body.is-locked .app-settings-btn {
   justify-items: stretch;
 }
 
+.pair-actions[hidden],
+.pair-banner[hidden],
+.pair-msg[hidden],
+#pair-panel[hidden],
+#settings-account-logged-in[hidden],
+#settings-account-guest[hidden] {
+  display: none !important;
+}
+
+.pair-actions[hidden],
+.pair-waiting[hidden],
+.pair-ready[hidden],
+.pair-msg[hidden],
+#pair-panel[hidden],
+#settings-account-logged-in[hidden],
+#settings-account-guest[hidden] {
+  display: none !important;
+}
+
 .pair-join {
   display: flex;
   gap: 0.45rem;
