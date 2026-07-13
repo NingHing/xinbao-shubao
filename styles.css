@@ -305,8 +305,23 @@ body.is-locked .gate {
   margin-top: 0.45rem;
 }
 
-.pair-banner .btn-mini-bar {
-  margin-top: 0.45rem;
+.sync-status {
+  margin: 0.45rem 0 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.sync-status.is-pending,
+.sync-status.is-syncing {
+  color: #8a6a28;
+}
+
+.sync-status.is-synced {
+  color: #2f5d50;
+}
+
+.sync-status.is-error {
+  color: #a33b2b;
 }
 
 .gate-actions {

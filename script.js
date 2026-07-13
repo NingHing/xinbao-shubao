@@ -264,6 +264,35 @@ document.addEventListener("DOMContentLoaded", function () {
     if (status) status.textContent = "你们已连接，正在同步同一本日记。";
     if (ready) ready.hidden = false;
     if (note) note.textContent = "云端同步已开启 · 双方看到同一本";
+    renderSyncStatus(XinbaoCloud.getSyncState());
+  }
+
+  function renderSyncStatus(info) {
+    var el = document.getElementById("sync-status");
+    if (!el) return;
+    info = info || { state: "local", detail: "" };
+    var state = info.state || "local";
+    var detail = info.detail || "";
+    var text = "同步状态：待命";
+    el.classList.remove("is-pending", "is-syncing", "is-synced", "is-error", "is-local");
+
+    if (state === "pending") {
+      text = "同步状态：准备上传…";
+      el.classList.add("is-pending");
+    } else if (state === "syncing") {
+      text = "同步状态：正在同步…";
+      el.classList.add("is-syncing");
+    } else if (state === "synced") {
+      text = "同步状态：已同步" + (detail ? "（" + detail + "）" : "");
+      el.classList.add("is-synced");
+    } else if (state === "error") {
+      text = "同步状态：失败" + (detail ? " — " + detail : "") + "，可点「立即同步」重试";
+      el.classList.add("is-error");
+    } else {
+      text = "同步状态：仅本机";
+      el.classList.add("is-local");
+    }
+    el.textContent = text;
   }
 
   function wirePairControls() {
@@ -380,6 +409,29 @@ document.addEventListener("DOMContentLoaded", function () {
     if (leaveWaiting) leaveWaiting.addEventListener("click", handleLeavePair);
     var leaveReady = document.getElementById("btn-leave-pair-ready");
     if (leaveReady) leaveReady.addEventListener("click", handleLeavePair);
+
+    var syncNowBtn = document.getElementById("btn-sync-now");
+    if (syncNowBtn) {
+      syncNowBtn.addEventListener("click", function () {
+        if (!XinbaoCloud.canSync()) {
+          setPairMsg("请先完成二人配对");
+          return;
+        }
+        XinbaoCloud.pushJournal(data)
+          .then(function () {
+            showToast("已同步到云端");
+          })
+          .catch(function (err) {
+            setPairMsg((err && err.message) || "同步失败");
+          });
+      });
+    }
+
+    if (XinbaoCloud.onStatusChange) {
+      XinbaoCloud.onStatusChange(function (info) {
+        renderSyncStatus(info);
+      });
+    }
   }
 
   function bootWithData() {

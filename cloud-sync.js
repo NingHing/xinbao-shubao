@@ -10,6 +10,27 @@ window.XinbaoCloud = (function () {
   var journalId = null;
   var pushTimer = null;
   var lastPushed = "";
+  var syncState = "local"; // local | pending | syncing | synced | error
+  var syncDetail = "";
+  var statusListeners = [];
+
+  function emitStatus(state, detail) {
+    syncState = state || syncState;
+    syncDetail = detail || "";
+    statusListeners.forEach(function (fn) {
+      try {
+        fn({ state: syncState, detail: syncDetail, at: Date.now() });
+      } catch (err) {}
+    });
+  }
+
+  function onStatusChange(fn) {
+    if (typeof fn === "function") statusListeners.push(fn);
+  }
+
+  function getSyncState() {
+    return { state: syncState, detail: syncDetail };
+  }
 
   function configured() {
     var cfg = window.APP_CONFIG || {};
@@ -100,10 +121,17 @@ window.XinbaoCloud = (function () {
 
   function pushJournal(payload) {
     var c = ensureClient();
-    if (!canSync() || !payload) return Promise.resolve();
+    if (!canSync() || !payload) {
+      emitStatus(canSync() ? syncState : "local", canSync() ? "" : "未开启云端同步");
+      return Promise.resolve();
+    }
     var json = JSON.stringify(payload);
-    if (json === lastPushed) return Promise.resolve();
+    if (json === lastPushed) {
+      emitStatus("synced", "已是最新");
+      return Promise.resolve();
+    }
 
+    emitStatus("syncing", "正在上传…");
     var row = {
       pair_id: pair.id,
       payload: payload,
@@ -115,27 +143,37 @@ window.XinbaoCloud = (function () {
       ? c.from("journals").update(row).eq("id", journalId)
       : c.from("journals").insert(row).select("id").single();
 
-    return Promise.resolve(req).then(function (res) {
-      if (res.error) throw res.error;
-      if (!journalId && res.data && res.data.id) journalId = res.data.id;
-      // insert without select may not return id — refetch
-      if (!journalId) {
-        return c
-          .from("journals")
-          .select("id")
-          .eq("pair_id", pair.id)
-          .maybeSingle()
-          .then(function (r2) {
-            if (r2.data) journalId = r2.data.id;
-            lastPushed = json;
-          });
-      }
-      lastPushed = json;
-    });
+    return Promise.resolve(req)
+      .then(function (res) {
+        if (res.error) throw res.error;
+        if (!journalId && res.data && res.data.id) journalId = res.data.id;
+        if (!journalId) {
+          return c
+            .from("journals")
+            .select("id")
+            .eq("pair_id", pair.id)
+            .maybeSingle()
+            .then(function (r2) {
+              if (r2.data) journalId = r2.data.id;
+              lastPushed = json;
+              emitStatus("synced", "刚刚同步成功");
+            });
+        }
+        lastPushed = json;
+        emitStatus("synced", "刚刚同步成功");
+      })
+      .catch(function (err) {
+        emitStatus("error", (err && err.message) || "同步失败");
+        throw err;
+      });
   }
 
   function queuePush(payload) {
-    if (!canSync()) return;
+    if (!canSync()) {
+      emitStatus("local", "仅保存在本机");
+      return;
+    }
+    emitStatus("pending", "准备同步…");
     clearTimeout(pushTimer);
     pushTimer = setTimeout(function () {
       pushJournal(payload).catch(function (err) {
@@ -247,6 +285,7 @@ window.XinbaoCloud = (function () {
           pair = null;
           journalId = null;
           lastPushed = "";
+          emitStatus("local", "已退出云端同步");
           return null;
         });
     }
@@ -263,6 +302,7 @@ window.XinbaoCloud = (function () {
           pair = null;
           journalId = null;
           lastPushed = "";
+          emitStatus("local", "已退出云端同步");
           return null;
         });
     }
@@ -278,6 +318,7 @@ window.XinbaoCloud = (function () {
         pair = null;
         journalId = null;
         lastPushed = "";
+        emitStatus("local", "已退出云端同步");
         return null;
       });
   }
@@ -313,6 +354,8 @@ window.XinbaoCloud = (function () {
     pullJournal: pullJournal,
     pushJournal: pushJournal,
     queuePush: queuePush,
+    onStatusChange: onStatusChange,
+    getSyncState: getSyncState,
     friendlyAuthError: friendlyAuthError
   };
 })();
