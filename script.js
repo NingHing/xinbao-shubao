@@ -11,6 +11,7 @@ document.addEventListener("DOMContentLoaded", function () {
   var defaultData = {
     siteTitle: PRODUCT_NAME,
     siteTitleAt: "",
+    tombstones: {},
     anniversaries: [
       {
         id: "seed-anni-1",
@@ -94,12 +95,52 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  /** 云端与本机合并：列表按 id；名称等字段按更新时间 */
+  function mergeTombstones(localStones, remoteStones) {
+    var out = {};
+    function absorb(src) {
+      Object.keys(src || {}).forEach(function (id) {
+        var t = Date.parse(src[id] || "") || 0;
+        var prev = Date.parse(out[id] || "") || 0;
+        if (t >= prev) out[id] = src[id];
+      });
+    }
+    absorb(remoteStones);
+    absorb(localStones);
+    return out;
+  }
+
+  /** 按删除标记清掉已被删除的条目（避免云端旧副本又合并回来） */
+  function purgeDeleted(journal) {
+    if (!journal) return journal;
+    if (!journal.tombstones || typeof journal.tombstones !== "object") {
+      journal.tombstones = {};
+    }
+    var stones = journal.tombstones;
+    ["anniversaries", "events", "sweets", "places", "fights"].forEach(function (key) {
+      journal[key] = (journal[key] || []).filter(function (item) {
+        if (!item || !item.id) return true;
+        var delAt = Date.parse(stones[item.id] || "") || 0;
+        if (!delAt) return true;
+        var itemAt = Date.parse(item.updatedAt || "") || 0;
+        return itemAt > delAt;
+      });
+    });
+    return journal;
+  }
+
+  function markDeleted(id) {
+    if (!data) return;
+    if (!data.tombstones || typeof data.tombstones !== "object") data.tombstones = {};
+    if (id) data.tombstones[id] = new Date().toISOString();
+  }
+
+  /** 云端与本机合并：列表按 id；名称等字段按更新时间；尊重删除标记 */
   function mergeJournalPayload(localData, remotePayload) {
     var local = localData || JSON.parse(JSON.stringify(defaultData));
     var remote = remotePayload || {};
     var out = {};
     Object.keys(defaultData).forEach(function (key) {
+      if (key === "tombstones") return;
       if (Array.isArray(defaultData[key])) {
         out[key] = mergeById(remote[key], local[key]);
         return;
@@ -124,7 +165,9 @@ document.addEventListener("DOMContentLoaded", function () {
       out.siteTitle = normalizeSiteTitle(remote.siteTitle);
       out.siteTitleAt = remote.siteTitleAt || "";
     }
-    return out;
+
+    out.tombstones = mergeTombstones(local.tombstones, remote.tombstones);
+    return purgeDeleted(out);
   }
 
   function normalizeSiteTitle(title) {
@@ -158,7 +201,7 @@ document.addEventListener("DOMContentLoaded", function () {
   function applyRecoveredSweets(target) {
     if (!target) return target;
     target.sweets = mergeById(target.sweets, RECOVERED_SWEETS);
-    return target;
+    return purgeDeleted(target);
   }
 
   // ----- 页面切换（整页切换，不是叠在首页下面）-----
@@ -333,7 +376,10 @@ document.addEventListener("DOMContentLoaded", function () {
         parsed.siteTitle = normalizeSiteTitle(parsed.siteTitle);
         parsed.siteTitleAt = parsed.siteTitleAt || "";
       }
-      return parsed;
+      if (!parsed.tombstones || typeof parsed.tombstones !== "object") {
+        parsed.tombstones = {};
+      }
+      return purgeDeleted(parsed);
     } catch (err) {
       return JSON.parse(JSON.stringify(defaultData));
     }
@@ -368,7 +414,8 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     mergePushRunning = true;
     mergePushAgain = false;
-    var localSnapshot = data;
+    // 深拷贝：避免拉取期间本机又改动，导致合并用到半截状态
+    var localSnapshot = JSON.parse(JSON.stringify(data || loadData()));
     XinbaoCloud.pullJournal()
       .then(function (remote) {
         if (remote) {
@@ -379,7 +426,12 @@ document.addEventListener("DOMContentLoaded", function () {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
           try {
             renderAll();
+            if (document.body.dataset.view === "anniversaries") {
+              renderReminders();
+            }
           } catch (err) {}
+        } else {
+          data = purgeDeleted(data || localSnapshot);
         }
         return XinbaoCloud.pushJournal(data);
       })
@@ -560,6 +612,111 @@ document.addEventListener("DOMContentLoaded", function () {
         saveData();
         applySiteTitle();
         showToast("已恢复为并记");
+      });
+    }
+
+    function setBackupMsg(text, ok) {
+      var el = document.getElementById("settings-backup-msg");
+      if (!el) return;
+      if (!text) {
+        el.hidden = true;
+        el.textContent = "";
+        el.style.color = "";
+        return;
+      }
+      el.hidden = false;
+      el.textContent = text;
+      el.style.color = ok ? "#2f5d50" : "#a33b2b";
+    }
+
+    function exportBackup() {
+      if (!data) data = loadData();
+      var payload = {
+        app: PRODUCT_NAME,
+        format: "binji-journal-v1",
+        exportedAt: new Date().toISOString(),
+        data: data
+      };
+      var json = JSON.stringify(payload, null, 2);
+      var blob = new Blob([json], { type: "application/json" });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      var title = normalizeSiteTitle(data.siteTitle || PRODUCT_NAME).replace(/[\\/:*?"<>|]/g, "-");
+      var d = new Date();
+      var stamp =
+        d.getFullYear() +
+        String(d.getMonth() + 1).padStart(2, "0") +
+        String(d.getDate()).padStart(2, "0");
+      a.href = url;
+      a.download = title + "-备份-" + stamp + ".json";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () {
+        URL.revokeObjectURL(url);
+      }, 1500);
+      setBackupMsg("已生成备份文件，请保存到文件 App / 网盘。", true);
+      showToast("已导出备份");
+    }
+
+    function importBackupFile(file) {
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function () {
+        try {
+          var parsed = JSON.parse(String(reader.result || ""));
+          var incoming = parsed && parsed.data ? parsed.data : parsed;
+          if (!incoming || typeof incoming !== "object") {
+            throw new Error("文件格式不对");
+          }
+          var preview =
+            "将用备份覆盖本机当前日记。\n\n" +
+            "备份时间：" +
+            (parsed.exportedAt || "未知") +
+            "\n" +
+            "纪念日 " +
+            ((incoming.anniversaries && incoming.anniversaries.length) || 0) +
+            " · 想法 " +
+            ((incoming.sweets && incoming.sweets.length) || 0) +
+            " · 足迹 " +
+            ((incoming.places && incoming.places.length) || 0) +
+            "\n\n确定导入吗？";
+          if (!window.confirm(preview)) return;
+
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(incoming));
+          data = loadData();
+          reindexOrders(data.anniversaries);
+          applySiteTitle();
+          saveData();
+          renderAll();
+          renderPairPanel();
+          setBackupMsg("导入成功。若已配对，会尽快同步到云端。", true);
+          showToast("备份已导入");
+        } catch (err) {
+          setBackupMsg((err && err.message) || "导入失败，请确认是并记导出的 JSON", false);
+        }
+      };
+      reader.onerror = function () {
+        setBackupMsg("读取文件失败", false);
+      };
+      reader.readAsText(file);
+    }
+
+    var exportBtn = document.getElementById("btn-export-backup");
+    if (exportBtn) {
+      exportBtn.addEventListener("click", exportBackup);
+    }
+    var importBtn = document.getElementById("btn-import-backup");
+    var importInput = document.getElementById("import-backup-input");
+    if (importBtn && importInput) {
+      importBtn.addEventListener("click", function () {
+        setBackupMsg("");
+        importInput.value = "";
+        importInput.click();
+      });
+      importInput.addEventListener("change", function () {
+        var file = importInput.files && importInput.files[0];
+        importBackupFile(file);
       });
     }
 
@@ -2294,6 +2451,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var delId = delBtn.getAttribute("data-id");
     if (!type || !delId) return;
     if (!confirm("确定删除这条记录吗？")) return;
+    markDeleted(delId);
     data[type] = data[type].filter(function (row) {
       return row.id !== delId;
     });

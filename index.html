@@ -52,6 +52,17 @@
         </form>
       </section>
 
+      <section class="settings-section" aria-labelledby="settings-backup-heading">
+        <h3 id="settings-backup-heading" class="settings-section-title">数据备份</h3>
+        <p class="settings-hint">导出整本日记到手机文件里。换机或出问题时，可用备份恢复。</p>
+        <div class="settings-actions">
+          <button type="button" class="btn" id="btn-export-backup">导出备份</button>
+          <button type="button" class="btn btn-ghost" id="btn-import-backup">导入备份</button>
+        </div>
+        <input id="import-backup-input" type="file" accept="application/json,.json" hidden />
+        <p id="settings-backup-msg" class="settings-hint" hidden></p>
+      </section>
+
       <section class="settings-section" aria-labelledby="settings-account-heading">
         <h3 id="settings-account-heading" class="settings-section-title">账户</h3>
         <div id="settings-account-logged-in" hidden>
@@ -639,7 +650,7 @@
     })();
   </script>
   <script src="seed-data.js?v=20260713-recover-sweets"></script>
-  <script src="script.js?v=stay-logged-in"></script>
+  <script src="script.js?v=tombstone-sync"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", function () {
