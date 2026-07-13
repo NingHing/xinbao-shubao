@@ -226,6 +226,62 @@ window.XinbaoCloud = (function () {
       });
   }
 
+  function leavePair() {
+    var c = ensureClient();
+    if (!user) return Promise.reject(new Error("请先登录"));
+    if (!pair) return Promise.reject(new Error("你当前不在二人空间里"));
+
+    var pairId = pair.id;
+    var isOwner = pair.owner_id === user.id;
+    var hasPartner = !!pair.partner_id;
+
+    // 1) 我是伙伴：退出后房间留给对方
+    if (!isOwner) {
+      return c
+        .from("pairs")
+        .update({ partner_id: null })
+        .eq("id", pairId)
+        .eq("partner_id", user.id)
+        .then(function (res) {
+          if (res.error) throw res.error;
+          pair = null;
+          journalId = null;
+          lastPushed = "";
+          return null;
+        });
+    }
+
+    // 2) 我是房主，且已有伙伴：把房主转给对方，自己退出
+    if (hasPartner) {
+      return c
+        .from("pairs")
+        .update({ owner_id: pair.partner_id, partner_id: null })
+        .eq("id", pairId)
+        .eq("owner_id", user.id)
+        .then(function (res) {
+          if (res.error) throw res.error;
+          pair = null;
+          journalId = null;
+          lastPushed = "";
+          return null;
+        });
+    }
+
+    // 3) 我是房主，还没人加入：删除空房间（日记本会级联删掉）
+    return c
+      .from("pairs")
+      .delete()
+      .eq("id", pairId)
+      .eq("owner_id", user.id)
+      .then(function (res) {
+        if (res.error) throw res.error;
+        pair = null;
+        journalId = null;
+        lastPushed = "";
+        return null;
+      });
+  }
+
   function restoreSession() {
     var c = ensureClient();
     if (!c) return Promise.resolve(null);
@@ -252,6 +308,7 @@ window.XinbaoCloud = (function () {
     signOut: signOut,
     createPair: createPair,
     joinPair: joinPair,
+    leavePair: leavePair,
     loadPair: loadPair,
     pullJournal: pullJournal,
     pushJournal: pushJournal,

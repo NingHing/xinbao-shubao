@@ -356,6 +356,30 @@ document.addEventListener("DOMContentLoaded", function () {
           });
       });
     }
+
+    function handleLeavePair() {
+      var p = XinbaoCloud.getPair();
+      if (!p) return;
+      var msg = p.partner_id
+        ? "确定退出二人空间吗？\n\n你这边会停止云端同步，但本机内容还在。\n对方仍可继续使用这份共享本。"
+        : "确定取消这个还没人加入的二人空间吗？";
+      if (!confirm(msg)) return;
+      setPairMsg("");
+      XinbaoCloud.leavePair()
+        .then(function () {
+          setPairMsg("已退出二人空间", true);
+          showToast("已退出配对");
+          renderPairPanel();
+        })
+        .catch(function (err) {
+          setPairMsg((err && err.message) || "退出失败");
+        });
+    }
+
+    var leaveWaiting = document.getElementById("btn-leave-pair-waiting");
+    if (leaveWaiting) leaveWaiting.addEventListener("click", handleLeavePair);
+    var leaveReady = document.getElementById("btn-leave-pair-ready");
+    if (leaveReady) leaveReady.addEventListener("click", handleLeavePair);
   }
 
   function bootWithData() {

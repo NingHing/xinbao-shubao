@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>馨宝与树宝</title>
-  <link rel="stylesheet" href="styles.css?v=cloud-pair" />
+  <link rel="stylesheet" href="styles.css?v=leave-pair" />
 </head>
 <body class="is-locked" data-view="home">
   <!-- ========== 门禁：云端登录（有配置时）或本地暗号 ========== -->
@@ -82,10 +82,14 @@
       <div id="pair-waiting" class="pair-banner" hidden>
         <p>邀请码（发给另一半）：</p>
         <p class="pair-code" id="pair-invite-code">------</p>
-        <button type="button" class="btn btn-ghost btn-mini-bar" id="btn-refresh-pair">对方加入后点这里刷新</button>
+        <div class="pair-btn-row">
+          <button type="button" class="btn btn-ghost btn-mini-bar" id="btn-refresh-pair">对方加入后点这里刷新</button>
+          <button type="button" class="btn btn-ghost btn-mini-bar" id="btn-leave-pair-waiting">取消二人空间</button>
+        </div>
       </div>
       <div id="pair-ready" class="pair-banner is-ready" hidden>
         <p>已连接。你们正在同步同一本日记（改动会上传云端）。</p>
+        <button type="button" class="btn btn-ghost btn-mini-bar" id="btn-leave-pair-ready">退出二人空间</button>
       </div>
     </section>
 
@@ -372,7 +376,7 @@
   <!-- 门禁：云端账号 或 本地暗号 -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
-  <script src="cloud-sync.js?v=1"></script>
+  <script src="cloud-sync.js?v=leave-pair"></script>
   <script>
     (function () {
       var PASSWORD = "20251204";
@@ -520,6 +524,6 @@
     })();
   </script>
   <script src="seed-data.js?v=20260711-1"></script>
-  <script src="script.js?v=cloud-pair"></script>
+  <script src="script.js?v=leave-pair"></script>
 </body>
 </html>
