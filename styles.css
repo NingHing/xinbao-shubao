@@ -1459,60 +1459,12 @@ body.is-locked .app-settings-btn {
   background: rgba(196, 95, 122, 0.85) !important;
 }
 
-.btn-star {
-  font: inherit;
-  font-size: 1.05rem;
-  line-height: 1;
-  color: var(--muted);
-  background: transparent;
-  border: 1px solid rgba(143, 117, 132, 0.3);
-  border-radius: 999px;
-  min-width: 2rem;
-  padding: 0.2rem 0.55rem;
-  cursor: pointer;
-}
 
-.btn-star.is-on {
-  color: #c45f7a;
-  border-color: rgba(196, 95, 122, 0.45);
-  background: rgba(248, 238, 242, 0.95);
-}
 
-.star-badge {
-  display: inline-block;
-  margin-right: 0.3rem;
-  color: #c45f7a;
-  font-size: 0.95em;
-}
 
-.entry-item.is-starred {
-  border-color: rgba(196, 95, 122, 0.35);
-  box-shadow: 0 8px 22px rgba(196, 95, 122, 0.1);
-}
 
-.star-filter-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin-top: 0.45rem;
-}
 
-.star-filter-chip {
-  font: inherit;
-  font-size: 0.78rem;
-  padding: 0.28rem 0.7rem;
-  border-radius: 999px;
-  border: 1px solid rgba(217, 123, 146, 0.28);
-  background: rgba(255, 252, 253, 0.85);
-  color: var(--muted);
-  cursor: pointer;
-}
 
-.star-filter-chip.is-active {
-  color: #fff;
-  background: var(--rose-deep);
-  border-color: var(--rose-deep);
-}
 
 .photo-add-tile {
   aspect-ratio: 1;

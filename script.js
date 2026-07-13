@@ -2169,17 +2169,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function sortByDateDesc(arr) {
     return arr.slice().sort(function (a, b) {
-      var star = (!!b.starred) - (!!a.starred);
-      if (star !== 0) return star;
       return (b.date || "").localeCompare(a.date || "");
     });
   }
 
-  /** 想对你说：日期新→旧；同一天再按写入/更新时间，最新在上；星标置顶 */
+  /** 想对你说：日期新→旧；同一天再按写入/更新时间，最新在上 */
   function sortSweetsDesc(arr) {
     return arr.slice().sort(function (a, b) {
-      var star = (!!b.starred) - (!!a.starred);
-      if (star !== 0) return star;
       var byDate = (b.date || "").localeCompare(a.date || "");
       if (byDate !== 0) return byDate;
       return sweetStamp(b) - sweetStamp(a);
@@ -2196,8 +2192,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function sortEvents(arr) {
     return arr.slice().sort(function (a, b) {
-      var star = (!!b.starred) - (!!a.starred);
-      if (star !== 0) return star;
       return (b.dateStart || b.date || "").localeCompare(a.dateStart || a.date || "");
     });
   }
@@ -2223,31 +2217,6 @@ document.addEventListener("DOMContentLoaded", function () {
     return active ? active.getAttribute("data-author") || "" : "";
   }
 
-  function getFilterStarredOnly(type) {
-    var bar = document.querySelector('.filter-bar[data-type="' + type + '"]');
-    if (!bar) return false;
-    var active = bar.querySelector(".star-filter-chip.is-active");
-    return !!(active && active.getAttribute("data-starred") === "1");
-  }
-
-  function starButtonHtml(type, id, starred) {
-    var on = !!starred;
-    return (
-      '<button type="button" class="btn-star' +
-      (on ? " is-on" : "") +
-      '" data-star-type="' +
-      escapeText(type) +
-      '" data-star-id="' +
-      escapeText(id) +
-      '" aria-label="' +
-      (on ? "取消星标" : "加星标") +
-      '" title="' +
-      (on ? "取消星标" : "星标为重要") +
-      '">' +
-      (on ? "★" : "☆") +
-      "</button>"
-    );
-  }
 
   function textHasQuery(text, q) {
     if (!q) return true;
@@ -2258,7 +2227,6 @@ document.addEventListener("DOMContentLoaded", function () {
     var q = getFilterQuery(type);
     var author = getFilterAuthor(type);
 
-    if (getFilterStarredOnly(type) && !item.starred) return false;
     if (author && (item.author || "") !== author) return false;
 
     if (!q) return true;
@@ -2335,12 +2303,9 @@ document.addEventListener("DOMContentLoaded", function () {
           ? '<p class="entry-note">' + escapeText(item.note) + "</p>"
           : "";
         return (
-          '<li class="entry-item' +
-          (item.starred ? " is-starred" : "") +
-          '">' +
+          '<li class="entry-item">' +
           '<div class="entry-top">' +
           '<p class="entry-title">' +
-          (item.starred ? '<span class="star-badge">★</span>' : "") +
           escapeText(item.title || "（无标题）") +
           "</p>" +
           '<p class="entry-date">' +
@@ -2350,7 +2315,6 @@ document.addEventListener("DOMContentLoaded", function () {
           meta +
           note +
           '<div class="entry-actions">' +
-          starButtonHtml("events", item.id, item.starred) +
           editButtonHtml("events", item.id) +
           '<button type="button" class="btn-delete" data-type="events" data-id="' +
           escapeText(item.id) +
@@ -2371,36 +2335,24 @@ document.addEventListener("DOMContentLoaded", function () {
     var mode = getAnniSortMode();
     var arr = list.slice();
 
-    function byStar(a, b) {
-      return (!!b.starred) - (!!a.starred);
-    }
-
     if (mode === "date-desc") {
       return arr.sort(function (a, b) {
-        var s = byStar(a, b);
-        if (s !== 0) return s;
         return (b.date || "").localeCompare(a.date || "");
       });
     }
     if (mode === "date-asc") {
       return arr.sort(function (a, b) {
-        var s = byStar(a, b);
-        if (s !== 0) return s;
         return (a.date || "").localeCompare(b.date || "");
       });
     }
     if (mode === "days-desc") {
       return arr.sort(function (a, b) {
-        var s = byStar(a, b);
-        if (s !== 0) return s;
         return daysSince(b.date) - daysSince(a.date);
       });
     }
 
-    // manual：星标 → 置顶 → order
+    // manual：置顶 → order
     return arr.sort(function (a, b) {
-      var s = byStar(a, b);
-      if (s !== 0) return s;
       if (!!b.pinned - !!a.pinned !== 0) return (!!b.pinned) - (!!a.pinned);
       return (a.order || 0) - (b.order || 0);
     });
@@ -2481,11 +2433,9 @@ document.addEventListener("DOMContentLoaded", function () {
         '<li class="entry-item' +
         (item.pinned ? " is-pinned" : "") +
         (isRemind ? " is-remind" : "") +
-        (item.starred ? " is-starred" : "") +
         '">' +
         '<div class="entry-top">' +
         '<p class="entry-title">' +
-        (item.starred ? '<span class="star-badge">★</span>' : "") +
         pinBadge +
         remindBadge +
         escapeText(item.title || "（无标题）") +
@@ -2500,7 +2450,6 @@ document.addEventListener("DOMContentLoaded", function () {
         remindLine +
         note +
         '<div class="entry-actions">' +
-        starButtonHtml("anniversaries", item.id, item.starred) +
         remindBtn +
         '<button type="button" class="btn-mini" data-anni-act="pin" data-id="' +
         escapeText(item.id) +
@@ -2520,8 +2469,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function sortPlaces(arr) {
     return arr.slice().sort(function (a, b) {
-      var star = (!!b.starred) - (!!a.starred);
-      if (star !== 0) return star;
       return (b.dateStart || "").localeCompare(a.dateStart || "");
     });
   }
@@ -2601,13 +2548,10 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       return (
-        '<li class="entry-item entry-item--place' +
-        (item.starred ? " is-starred" : "") +
-        '">' +
+        '<li class="entry-item entry-item--place">' +
         '<div class="place-main">' +
         '<div class="entry-top">' +
         '<p class="entry-title">' +
-        (item.starred ? '<span class="star-badge">★</span>' : "") +
         escapeText(item.title || "（未命名地点）") +
         "</p>" +
         '<p class="place-range">' +
@@ -2617,7 +2561,6 @@ document.addEventListener("DOMContentLoaded", function () {
         costHtml +
         note +
         '<div class="entry-actions">' +
-        starButtonHtml("places", item.id, item.starred) +
         editButtonHtml("places", item.id) +
         '<button type="button" class="btn-mini" data-edit-place-photos="' +
         escapeText(item.id) +
@@ -2702,12 +2645,9 @@ document.addEventListener("DOMContentLoaded", function () {
         var sweetBody = (item.note || item.title || "").trim();
         var repliesHtml = renderSweetRepliesHtml(item);
         return (
-          '<li class="entry-item entry-item--sweet' +
-          (item.starred ? " is-starred" : "") +
-          '">' +
+          '<li class="entry-item entry-item--sweet">' +
           '<div class="entry-top">' +
           '<p class="entry-meta" style="margin:0">' +
-          (item.starred ? '<span class="star-badge">★</span>' : "") +
           (item.author ? "来自 " + escapeText(item.author) : "") +
           "</p>" +
           '<p class="entry-date">' +
@@ -2721,7 +2661,6 @@ document.addEventListener("DOMContentLoaded", function () {
             : "") +
           repliesHtml +
           '<div class="entry-actions">' +
-          starButtonHtml(type, item.id, item.starred) +
           '<button type="button" class="btn-mini" data-reply-sweet="' +
           escapeText(item.id) +
           '">回复</button>' +
@@ -2737,12 +2676,9 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       return (
-        '<li class="entry-item' +
-        (item.starred ? " is-starred" : "") +
-        '">' +
+        '<li class="entry-item">' +
         '<div class="entry-top">' +
         '<p class="entry-title">' +
-        (item.starred ? '<span class="star-badge">★</span>' : "") +
         escapeText(item.title || "（无标题）") +
         "</p>" +
         '<p class="entry-date">' +
@@ -2754,7 +2690,6 @@ document.addEventListener("DOMContentLoaded", function () {
         resolve +
         reflection +
         '<div class="entry-actions">' +
-        starButtonHtml(type, item.id, item.starred) +
         editButtonHtml(type, item.id) +
         '<button type="button" class="btn-delete" data-type="' +
         type +
@@ -3883,20 +3818,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // ----- 编辑 / 删除 / 置顶 / 排序 -----
   document.body.addEventListener("click", function (e) {
-    var starBtn = e.target.closest("[data-star-type]");
-    if (starBtn) {
-      var starType = starBtn.getAttribute("data-star-type");
-      var starId = starBtn.getAttribute("data-star-id");
-      var starItem = findItem(starType, starId);
-      if (!starItem) return;
-      starItem.starred = !starItem.starred;
-      touchUpdatedAt(starItem);
-      saveData();
-      noteLocalWrite(starType);
-      renderList(starType);
-      showToast(starItem.starred ? "已加星标" : "已取消星标");
-      return;
-    }
 
     var replyBtn = e.target.closest("[data-reply-sweet]");
     if (replyBtn) {
@@ -4047,17 +3968,6 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
-    var starFilterChip = e.target.closest(".star-filter-chip");
-    if (starFilterChip) {
-      var starBar = starFilterChip.closest(".filter-bar");
-      if (!starBar) return;
-      starBar.querySelectorAll(".star-filter-chip").forEach(function (el) {
-        el.classList.remove("is-active");
-      });
-      starFilterChip.classList.add("is-active");
-      var starFilterType = starBar.getAttribute("data-type");
-      if (starFilterType) renderList(starFilterType);
-    }
   });
 
   document.body.addEventListener("input", function (e) {

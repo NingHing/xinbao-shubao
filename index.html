@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="icons/icon-180.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=photo-clarity-v1" />
+  <link rel="stylesheet" href="styles.css?v=no-star-v1" />
 </head>
 <body class="is-locked" data-view="home">
   <!-- App 顶栏：设置入口（解锁后显示） -->
@@ -248,10 +248,6 @@
 
     <div class="filter-bar" data-type="anniversaries">
       <input type="search" class="filter-search" id="filter-q-anniversaries" placeholder="搜索标题、备注…" autocomplete="off" />
-      <div class="star-filter-chips" role="group" aria-label="按星标筛选">
-        <button type="button" class="star-filter-chip is-active" data-starred="">全部</button>
-        <button type="button" class="star-filter-chip" data-starred="1">★ 星标</button>
-      </div>
     </div>
 
     <ul class="entry-list" id="list-anniversaries"></ul>
@@ -292,10 +288,6 @@
         <button type="button" class="author-chip" data-author="馨宝">馨宝</button>
         <button type="button" class="author-chip" data-author="树宝">树宝</button>
         <button type="button" class="author-chip" data-author="我们">我们</button>
-      </div>
-      <div class="star-filter-chips" role="group" aria-label="按星标筛选">
-        <button type="button" class="star-filter-chip is-active" data-starred="">全部</button>
-        <button type="button" class="star-filter-chip" data-starred="1">★ 星标</button>
       </div>
     </div>
     <ul class="entry-list" id="list-events"></ul>
@@ -348,10 +340,6 @@
         <button type="button" class="author-chip" data-author="馨宝">馨宝</button>
         <button type="button" class="author-chip" data-author="树宝">树宝</button>
         <button type="button" class="author-chip" data-author="我们">我们</button>
-      </div>
-      <div class="star-filter-chips" role="group" aria-label="按星标筛选">
-        <button type="button" class="star-filter-chip is-active" data-starred="">全部</button>
-        <button type="button" class="star-filter-chip" data-starred="1">★ 星标</button>
       </div>
     </div>
     <ul class="entry-list" id="list-sweets"></ul>
@@ -416,10 +404,6 @@
 
     <div class="filter-bar" data-type="places">
       <input type="search" class="filter-search" id="filter-q-places" placeholder="搜索地点、一句话…" autocomplete="off" />
-      <div class="star-filter-chips" role="group" aria-label="按星标筛选">
-        <button type="button" class="star-filter-chip is-active" data-starred="">全部</button>
-        <button type="button" class="star-filter-chip" data-starred="1">★ 星标</button>
-      </div>
     </div>
 
     <ul class="entry-list" id="list-places"></ul>
@@ -484,10 +468,6 @@
         <button type="button" class="author-chip" data-author="馨宝">馨宝</button>
         <button type="button" class="author-chip" data-author="树宝">树宝</button>
         <button type="button" class="author-chip" data-author="我们">我们</button>
-      </div>
-      <div class="star-filter-chips" role="group" aria-label="按星标筛选">
-        <button type="button" class="star-filter-chip is-active" data-starred="">全部</button>
-        <button type="button" class="star-filter-chip" data-starred="1">★ 星标</button>
       </div>
     </div>
     <ul class="entry-list" id="list-fights"></ul>
@@ -731,7 +711,7 @@
     })();
   </script>
   <script src="seed-data.js?v=20260713-recover-sweets"></script>
-  <script src="script.js?v=delete-durable-v2"></script>
+  <script src="script.js?v=no-star-v1"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", function () {
