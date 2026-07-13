@@ -1935,30 +1935,6 @@ document.addEventListener("DOMContentLoaded", function () {
       });
     }
 
-    var settingsSignup = document.getElementById("settings-signup-btn");
-    if (settingsSignup) {
-      settingsSignup.addEventListener("click", function () {
-        setSettingsAuthError("");
-        var email = document.getElementById("settings-email").value.trim();
-        var password = document.getElementById("settings-password").value;
-        XinbaoCloud.signUp(email, password)
-          .then(function () {
-            return XinbaoCloud.signIn(email, password);
-          })
-          .then(function () {
-            return XinbaoCloud.loadPair();
-          })
-          .then(function () {
-            setSettingsAuthError("");
-            renderPairPanel();
-            showToast("注册并登录成功");
-          })
-          .catch(function (err) {
-            setSettingsAuthError((err && err.message) || "注册失败");
-          });
-      });
-    }
-
     var createBtn = document.getElementById("btn-create-pair");
     if (createBtn) {
       createBtn.addEventListener("click", function () {

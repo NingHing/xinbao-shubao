@@ -132,8 +132,8 @@
             <p id="settings-auth-error" class="settings-error" hidden></p>
             <div class="settings-actions">
               <button type="submit" class="btn" id="settings-login-btn">登入账号</button>
-              <button type="button" class="btn btn-ghost" id="settings-signup-btn">注册</button>
             </div>
+            <p class="settings-hint" style="margin-top:0.75rem;margin-bottom:0">新账号需在 Supabase 后台创建，网站不开放公开注册。</p>
           </form>
         </div>
       </section>
@@ -177,7 +177,7 @@
 
       <!-- 云端登录 -->
       <div id="gate-cloud" hidden>
-        <p class="gate-hint">与另一半共写同一本日记</p>
+        <p class="gate-hint">请用你们的账号登录后进入（仅二人可见）</p>
         <form id="cloud-auth-form" class="gate-form" autocomplete="on">
           <label class="gate-label" for="cloud-email">邮箱</label>
           <input id="cloud-email" class="gate-input" type="email" required placeholder="you@example.com" />
@@ -186,15 +186,14 @@
           <p id="cloud-auth-error" class="gate-error" hidden></p>
           <div class="gate-actions">
             <button type="submit" class="btn gate-btn" id="cloud-login-btn">登录</button>
-            <button type="button" class="btn btn-ghost gate-btn" id="cloud-signup-btn">注册</button>
           </div>
         </form>
-        <button type="button" class="linkish" id="btn-use-local-gate">改用本地暗号进入（不同步）</button>
+        <p class="gate-hint" style="margin-top:0.85rem;margin-bottom:0">没有账号？请让对方在设置里告知，或由管理员在后台创建。</p>
       </div>
 
-      <!-- 本地暗号（兼容旧方式） -->
-      <div id="gate-local">
-        <p class="gate-hint">输入暗号后进入</p>
+      <!-- 本地暗号：仅在未配置云端时作为备用 -->
+      <div id="gate-local" hidden>
+        <p class="gate-hint">输入暗号后进入（本机模式，不与云端同步）</p>
         <form id="gate-form" class="gate-form" autocomplete="off">
           <label class="gate-label" for="gate-password">暗号</label>
           <input
@@ -208,7 +207,6 @@
           <p id="gate-error" class="gate-error" hidden>暗号不对，再试一次</p>
           <button type="button" id="gate-btn" class="btn gate-btn">进入</button>
         </form>
-        <button type="button" class="linkish" id="btn-use-cloud-gate" hidden>改用账号登录（可同步）</button>
       </div>
     </div>
   </div>
@@ -606,9 +604,9 @@
   <script src="cloud-sync.js?v=mobile-realtime-v1"></script>
   <script>
     (function () {
+      // 本地暗号仅在「未配置云端」时使用；已配置云端则必须登录账号
       var PASSWORD = "20251204";
       var KEY = "xinbao-shubao-gate-ok";
-      var cloudModePreferred = true;
 
       var gateCloud = document.getElementById("gate-cloud");
       var gateLocal = document.getElementById("gate-local");
@@ -629,7 +627,6 @@
           if (localStorage.getItem(KEY) === "1") return true;
         } catch (err) {}
         try {
-          // 兼容旧版：曾写在 sessionStorage
           if (sessionStorage.getItem(KEY) === "1") {
             rememberUnlock();
             return true;
@@ -647,7 +644,6 @@
         } catch (err2) {}
       }
 
-      // 给设置里「退出登录」用
       window.XinbaoClearGate = clearRememberedUnlock;
 
       function unlock() {
@@ -679,39 +675,33 @@
       }
 
       function showGateMode() {
-        if (cloudReady() && cloudModePreferred) {
+        if (cloudReady()) {
           if (gateCloud) gateCloud.hidden = false;
           if (gateLocal) gateLocal.hidden = true;
         } else {
           if (gateCloud) gateCloud.hidden = true;
           if (gateLocal) gateLocal.hidden = false;
-          var switchBtn = document.getElementById("btn-use-cloud-gate");
-          if (switchBtn) switchBtn.hidden = !cloudReady();
         }
       }
 
       function enterIfPossible() {
-        // 1) 云端还有登录会话 → 直接进，不必再输密码
         if (cloudReady()) {
+          // 已配置云端：只有登录会话才能进，不再用「本机开过门」或暗号绕过
           XinbaoCloud.restoreSession()
             .then(function (user) {
-              if (user) {
-                unlock();
-                return;
+              if (user) unlock();
+              else {
+                clearRememberedUnlock();
+                showGateMode();
               }
-              // 2) 没有云端会话，但本机记得「开过门」→ 本地暗号模式也能进
-              if (hasRememberedUnlock()) {
-                unlock();
-                return;
-              }
-              showGateMode();
             })
             .catch(function () {
-              if (hasRememberedUnlock()) unlock();
-              else showGateMode();
+              clearRememberedUnlock();
+              showGateMode();
             });
           return;
         }
+        // 未配置云端时，才允许本机暗号 / 记住状态
         if (hasRememberedUnlock()) unlock();
         else showGateMode();
       }
@@ -723,6 +713,10 @@
       var btn = document.getElementById("gate-btn");
 
       function checkPassword() {
+        if (cloudReady()) {
+          showGateMode();
+          return;
+        }
         var typed = ((input && input.value) || "").trim();
         if (typed === PASSWORD) {
           if (localError) localError.hidden = true;
@@ -765,41 +759,10 @@
             });
         });
       }
-
-      var signupBtn = document.getElementById("cloud-signup-btn");
-      if (signupBtn) {
-        signupBtn.addEventListener("click", function () {
-          showCloudError("");
-          var email = document.getElementById("cloud-email").value.trim();
-          var password = document.getElementById("cloud-password").value;
-          XinbaoCloud.signUp(email, password)
-            .then(function () {
-              unlock();
-            })
-            .catch(function (err) {
-              showCloudError((err && err.message) || "注册失败");
-            });
-        });
-      }
-
-      var useLocal = document.getElementById("btn-use-local-gate");
-      if (useLocal) {
-        useLocal.addEventListener("click", function () {
-          cloudModePreferred = false;
-          showGateMode();
-        });
-      }
-      var useCloud = document.getElementById("btn-use-cloud-gate");
-      if (useCloud) {
-        useCloud.addEventListener("click", function () {
-          cloudModePreferred = true;
-          showGateMode();
-        });
-      }
     })();
   </script>
   <script src="seed-data.js?v=20260713-recover-sweets"></script>
-  <script src="script.js?v=datetime-v1"></script>
+  <script src="script.js?v=login-only-v1"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", function () {
