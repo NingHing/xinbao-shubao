@@ -4092,9 +4092,11 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       if (type === "fights") {
+        syncVoiceToAuthor(form);
         fields.resolve = (fd.get("resolve") || "").toString().trim();
         fields.reflection = (fd.get("reflection") || "").toString().trim();
-        fields.author = (fd.get("author") || "").toString();
+        fields.author =
+          (form.elements.author && form.elements.author.value) || getMyNick();
       }
 
       if (isEdit) {
