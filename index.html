@@ -2,9 +2,17 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#c45f7a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="并记" />
+  <meta name="description" content="并记 · 两人一本私密日记" />
   <title>并记</title>
-  <link rel="stylesheet" href="styles.css?v=site-title" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icons/icon-180.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+  <link rel="stylesheet" href="styles.css?v=app-shell" />
 </head>
 <body class="is-locked" data-view="home">
   <!-- App 顶栏：设置入口（解锁后显示） -->
@@ -148,7 +156,7 @@
       <h1 class="hero-title" id="site-title">并记</h1>
       <p class="hero-sub">从 2025.12.4 开始的故事</p>
       <p class="hero-days">在一起第 <span id="days-together">0</span> 天</p>
-      <p class="privacy-note" id="privacy-note">私密本机站 · 点板块进入独立页面</p>
+      <p class="privacy-note" id="privacy-note">私密日记 · 底部切换栏目</p>
     </header>
 
     <section class="home-reminders" aria-label="纪念日提醒">
@@ -158,35 +166,39 @@
       </div>
       <ul class="reminder-list" id="list-reminders"></ul>
     </section>
-
-    <nav class="tile-grid" aria-label="功能入口">
-      <a class="tile" href="#anniversaries">
-        <span class="tile-num">01</span>
-        <span class="tile-name">纪念日</span>
-      </a>
-      <a class="tile" href="#events">
-        <span class="tile-num">02</span>
-        <span class="tile-name">重要的事</span>
-      </a>
-      <a class="tile" href="#sweets">
-        <span class="tile-num">03</span>
-        <span class="tile-name">想对你说</span>
-      </a>
-      <a class="tile" href="#places">
-        <span class="tile-num">04</span>
-        <span class="tile-name">足迹</span>
-      </a>
-      <a class="tile" href="#fights">
-        <span class="tile-num">05</span>
-        <span class="tile-name">和解</span>
-      </a>
-    </nav>
   </div>
+
+  <!-- App 底部导航 -->
+  <nav id="app-tabbar" class="app-tabbar" aria-label="主导航" hidden>
+    <a class="app-tab is-active" href="#home" data-tab="home">
+      <span class="app-tab-icon" aria-hidden="true">⌂</span>
+      <span class="app-tab-label">首页</span>
+    </a>
+    <a class="app-tab" href="#anniversaries" data-tab="anniversaries">
+      <span class="app-tab-icon" aria-hidden="true">日</span>
+      <span class="app-tab-label">纪念</span>
+    </a>
+    <a class="app-tab" href="#events" data-tab="events">
+      <span class="app-tab-icon" aria-hidden="true">事</span>
+      <span class="app-tab-label">大事</span>
+    </a>
+    <a class="app-tab" href="#sweets" data-tab="sweets">
+      <span class="app-tab-icon" aria-hidden="true">心</span>
+      <span class="app-tab-label">想说</span>
+    </a>
+    <a class="app-tab" href="#places" data-tab="places">
+      <span class="app-tab-icon" aria-hidden="true">迹</span>
+      <span class="app-tab-label">足迹</span>
+    </a>
+    <a class="app-tab" href="#fights" data-tab="fights">
+      <span class="app-tab-icon" aria-hidden="true">和</span>
+      <span class="app-tab-label">和解</span>
+    </a>
+  </nav>
 
   <!-- ========== 子页：纪念日 ========== -->
   <div id="view-anniversaries" class="view view-page" hidden>
     <div class="page-bar">
-      <a class="btn-back" href="#home">← 返回首页</a>
       <h2 class="page-title">纪念日</h2>
     </div>
     <p class="page-desc">一年又一年，仍想和你一起记得</p>
@@ -232,7 +244,6 @@
   <!-- ========== 子页：重要的事（原大事记） ========== -->
   <div id="view-events" class="view view-page" hidden>
     <div class="page-bar">
-      <a class="btn-back" href="#home">← 返回首页</a>
       <h2 class="page-title">重要的事</h2>
     </div>
     <p class="page-desc">那些改变我们节奏与心态的事</p>
@@ -284,7 +295,6 @@
   <!-- ========== 子页：想对你说（原甜蜜想法） ========== -->
   <div id="view-sweets" class="view view-page" hidden>
     <div class="page-bar">
-      <a class="btn-back" href="#home">← 返回首页</a>
       <h2 class="page-title">想对你说</h2>
     </div>
     <p class="page-desc">那些未说出口的话，先放在这里</p>
@@ -327,7 +337,6 @@
   <!-- ========== 子页：足迹 ========== -->
   <div id="view-places" class="view view-page" hidden>
     <div class="page-bar">
-      <a class="btn-back" href="#home">← 返回首页</a>
       <h2 class="page-title">足迹</h2>
     </div>
     <p class="page-desc">我们一起走过的路</p>
@@ -376,7 +385,6 @@
   <!-- ========== 子页：和解（原吵架记录） ========== -->
   <div id="view-fights" class="view view-page" hidden>
     <div class="page-bar">
-      <a class="btn-back" href="#home">← 返回首页</a>
       <h2 class="page-title">和解</h2>
     </div>
     <p class="page-desc">雨停之后，把靠近的方式写下来</p>
@@ -458,6 +466,8 @@
         }
         var settingsBtn = document.getElementById("btn-open-settings");
         if (settingsBtn) settingsBtn.hidden = false;
+        var tabbar = document.getElementById("app-tabbar");
+        if (tabbar) tabbar.hidden = false;
         document.dispatchEvent(new Event("site-unlocked"));
       }
 
@@ -584,6 +594,15 @@
     })();
   </script>
   <script src="seed-data.js?v=20260713-recover-sweets"></script>
-  <script src="script.js?v=site-title"></script>
+  <script src="script.js?v=app-shell"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", function () {
+        navigator.serviceWorker.register("./sw.js").catch(function (err) {
+          console.warn("SW 注册失败", err);
+        });
+      });
+    }
+  </script>
 </body>
 </html>

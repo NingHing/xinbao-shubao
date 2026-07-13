@@ -141,9 +141,13 @@ body.is-locked .gate {
 .view-page {
   width: min(720px, 92%);
   margin: 0 auto;
-  padding: 1.25rem 0 5rem;
+  padding: 1.25rem 0 calc(5.5rem + env(safe-area-inset-bottom));
   min-height: 100vh;
   box-sizing: border-box;
+}
+
+.view-home {
+  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
 }
 
 .home-hero {
@@ -745,40 +749,92 @@ body.is-locked .app-settings-btn {
 .page-bar {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.85rem;
   margin-bottom: 0.35rem;
-}
-
-.btn-back {
-  font: inherit;
-  font-size: 0.9rem;
-  color: var(--rose-deep);
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 0.4rem 0.85rem;
-  cursor: pointer;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-}
-
-.btn-back:hover {
-  background: #f8eef2;
+  padding-top: 0.25rem;
 }
 
 .page-title {
   font-family: var(--font-display);
-  font-size: 1.85rem;
+  font-size: 1.55rem;
   letter-spacing: 0.12em;
   color: var(--rose-deep);
   font-weight: 600;
+  text-align: center;
 }
 
 .page-desc {
   color: var(--muted);
   margin-bottom: 1.2rem;
   font-size: 0.95rem;
+  text-align: center;
+}
+
+/* ----- App 底部导航 ----- */
+.app-tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 45;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0;
+  padding: 0.35rem 0.2rem calc(0.35rem + env(safe-area-inset-bottom));
+  background: rgba(255, 252, 253, 0.96);
+  border-top: 1px solid rgba(217, 123, 146, 0.22);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.app-tabbar[hidden] {
+  display: none !important;
+}
+
+body.is-locked .app-tabbar {
+  display: none !important;
+}
+
+.app-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.12rem;
+  min-height: 3rem;
+  padding: 0.2rem 0.1rem;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.68rem;
+  letter-spacing: 0.02em;
+  border-radius: 10px;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.app-tab-icon {
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: rgba(217, 123, 146, 0.1);
+  color: inherit;
+}
+
+.app-tab.is-active {
+  color: var(--rose-deep);
+}
+
+.app-tab.is-active .app-tab-icon {
+  background: rgba(196, 95, 122, 0.16);
+}
+
+.app-tab:active {
+  background: rgba(217, 123, 146, 0.08);
 }
 
 .filter-bar {
@@ -1082,7 +1138,7 @@ body.is-locked .app-settings-btn {
 .fab {
   position: fixed;
   right: 1.25rem;
-  bottom: 1.25rem;
+  bottom: calc(4.6rem + env(safe-area-inset-bottom));
   width: 3.4rem;
   height: 3.4rem;
   border: none;
