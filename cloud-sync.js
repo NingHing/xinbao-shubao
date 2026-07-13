@@ -158,6 +158,26 @@ window.XinbaoCloud = (function () {
       });
   }
 
+  function friendlySyncError(err) {
+    var m = String(
+      (err && (err.message || err.error_description || err.details || err.hint)) ||
+        ""
+    );
+    var code = String((err && (err.code || err.statusCode || err.status)) || "");
+    if (
+      code === "413" ||
+      /413|payload|too large|request entity|body exceeded|JSON could not be generated|bytes/i.test(
+        m
+      )
+    ) {
+      return "足迹照片总大小超出云端限制。请少放几张，或等自动压缩后再点「同步最新」";
+    }
+    if (/Failed to fetch|NetworkError|network/i.test(m)) {
+      return "网络不稳定，请稍后再试";
+    }
+    return m || "同步失败";
+  }
+
   function pushJournal(payload, preJson) {
     var c = ensureClient();
     if (!canSync() || !payload) {
@@ -202,8 +222,11 @@ window.XinbaoCloud = (function () {
         emitStatus("synced", "刚刚同步成功");
       })
       .catch(function (err) {
-        emitStatus("error", (err && err.message) || "同步失败");
-        throw err;
+        var msg = friendlySyncError(err);
+        emitStatus("error", msg);
+        var wrapped = new Error(msg);
+        wrapped.cause = err;
+        throw wrapped;
       });
   }
 

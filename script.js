@@ -684,6 +684,9 @@ document.addEventListener("DOMContentLoaded", function () {
   var mergePushTimer = null;
   var mergePushRunning = false;
   var mergePushAgain = false;
+  // 云端整本 JSON 过大时（常见于足迹 base64 照片）会同步失败
+  var CLOUD_PAYLOAD_SOFT_LIMIT = 850000;
+  var CLOUD_PAYLOAD_HARD_LIMIT = 1200000;
 
   function queueMergePush(options) {
     options = options || {};
@@ -692,6 +695,129 @@ document.addEventListener("DOMContentLoaded", function () {
     mergePushTimer = setTimeout(function () {
       runMergePush();
     }, delay);
+  }
+
+  function drawImageToJpegWithOpts(img, maxSide, quality) {
+    maxSide = maxSide || 960;
+    quality = quality == null ? 0.58 : quality;
+    var w = img.naturalWidth || img.width;
+    var h = img.naturalHeight || img.height;
+    if (!w || !h) throw new Error("图片尺寸无效");
+    if (w > maxSide || h > maxSide) {
+      if (w >= h) {
+        h = Math.round((h * maxSide) / w);
+        w = maxSide;
+      } else {
+        w = Math.round((w * maxSide) / h);
+        h = maxSide;
+      }
+    }
+    var canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    var ctx = canvas.getContext("2d");
+    ctx.drawImage(img, 0, 0, w, h);
+    var dataUrl = canvas.toDataURL("image/jpeg", quality);
+    canvas.width = 0;
+    canvas.height = 0;
+    if (!dataUrl || dataUrl === "data:,") throw new Error("图片压缩失败");
+    return dataUrl;
+  }
+
+  function recompressDataUrl(dataUrl, maxSide, quality) {
+    return new Promise(function (resolve, reject) {
+      if (!dataUrl || String(dataUrl).indexOf("data:image") !== 0) {
+        resolve(dataUrl);
+        return;
+      }
+      var img = new Image();
+      img.onload = function () {
+        try {
+          resolve(drawImageToJpegWithOpts(img, maxSide, quality));
+        } catch (err) {
+          reject(err);
+        }
+      };
+      img.onerror = function () {
+        reject(new Error("图片读取失败"));
+      };
+      img.src = dataUrl;
+    });
+  }
+
+  /** 把足迹里的大图逐级压小，直到整本接近云端可传大小 */
+  function shrinkJournalPhotos(journal, targetBytes) {
+    var clone = JSON.parse(JSON.stringify(journal || {}));
+    var levels = [
+      { maxSide: 960, quality: 0.55 },
+      { maxSide: 720, quality: 0.48 },
+      { maxSide: 560, quality: 0.4 },
+      { maxSide: 420, quality: 0.34 }
+    ];
+
+    function currentSize() {
+      return JSON.stringify(clone).length;
+    }
+
+    function shrinkLevel(level) {
+      var tasks = [];
+      (clone.places || []).forEach(function (place) {
+        if (!place || !Array.isArray(place.photos)) return;
+        place.photos.forEach(function (src, idx) {
+          if (typeof src !== "string" || src.indexOf("data:image") !== 0) return;
+          tasks.push(
+            recompressDataUrl(src, level.maxSide, level.quality)
+              .then(function (next) {
+                if (next && next.length < src.length) {
+                  place.photos[idx] = next;
+                }
+              })
+              .catch(function () {})
+          );
+        });
+      });
+      return Promise.all(tasks);
+    }
+
+    function step(i) {
+      if (currentSize() <= targetBytes) return Promise.resolve(clone);
+      if (i >= levels.length) return Promise.resolve(clone);
+      return shrinkLevel(levels[i]).then(function () {
+        return step(i + 1);
+      });
+    }
+
+    if (currentSize() <= targetBytes) return Promise.resolve(clone);
+    return step(0);
+  }
+
+  function ensureCloudPayload(journal) {
+    var json = JSON.stringify(journal || {});
+    if (json.length <= CLOUD_PAYLOAD_SOFT_LIMIT) {
+      return Promise.resolve({ journal: journal, shrunk: false, size: json.length });
+    }
+    if (window.XinbaoCloud && XinbaoCloud.emitStatus) {
+      // optional - may not exist
+    }
+    try {
+      showToast("照片较大，正在压缩以便同步…");
+    } catch (err) {}
+    return shrinkJournalPhotos(journal, CLOUD_PAYLOAD_SOFT_LIMIT).then(function (
+      shrunk
+    ) {
+      var size = JSON.stringify(shrunk).length;
+      if (size > CLOUD_PAYLOAD_HARD_LIMIT) {
+        var err = new Error(
+          "足迹照片总大小仍超出云端限制，请每条少放几张后再同步"
+        );
+        throw err;
+      }
+      return {
+        journal: shrunk,
+        shrunk: size < json.length,
+        size: size
+      };
+    });
   }
 
   function runMergePush() {
@@ -721,10 +847,22 @@ document.addEventListener("DOMContentLoaded", function () {
         } else {
           data = purgeDeleted(data || localSnapshot);
         }
-        return XinbaoCloud.pushJournal(data);
+        return ensureCloudPayload(data).then(function (ready) {
+          if (ready.shrunk) {
+            data = ready.journal;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            try {
+              renderAll();
+            } catch (err) {}
+          }
+          return XinbaoCloud.pushJournal(data);
+        });
       })
       .catch(function (err) {
         console.warn("合并同步失败", err);
+        try {
+          showToast((err && err.message) || "同步失败，请稍后再试");
+        } catch (e) {}
       })
       .then(function () {
         mergePushRunning = false;
@@ -1040,14 +1178,21 @@ document.addEventListener("DOMContentLoaded", function () {
               applySiteTitle();
               renderAll();
               renderPairPanel();
-              return XinbaoCloud.pushJournal(data);
+              return ensureCloudPayload(data).then(function (ready) {
+                if (ready.shrunk) {
+                  data = ready.journal;
+                  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+                  renderAll();
+                }
+                return XinbaoCloud.pushJournal(data);
+              });
             })
             .then(function () {
               done("已同步最新内容");
             })
             .catch(function (err) {
               console.warn(err);
-              done("同步失败，请稍后再试");
+              done((err && err.message) || "同步失败，请稍后再试");
             });
         } catch (err) {
           softRefreshBtn.disabled = false;
@@ -1264,8 +1409,20 @@ document.addEventListener("DOMContentLoaded", function () {
           setPairMsg("请先完成二人配对");
           return;
         }
-        XinbaoCloud.pushJournal(data)
+        setPairMsg("正在同步…");
+        ensureCloudPayload(data)
+          .then(function (ready) {
+            if (ready.shrunk) {
+              data = ready.journal;
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+              try {
+                renderAll();
+              } catch (err) {}
+            }
+            return XinbaoCloud.pushJournal(data);
+          })
           .then(function () {
+            setPairMsg("已同步到云端", true);
             showToast("已同步到云端");
           })
           .catch(function (err) {
@@ -2667,29 +2824,8 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function drawImageToJpeg(img) {
-    var maxSide = 1280;
-    var w = img.naturalWidth || img.width;
-    var h = img.naturalHeight || img.height;
-    if (!w || !h) throw new Error("图片尺寸无效");
-    if (w > maxSide || h > maxSide) {
-      if (w >= h) {
-        h = Math.round((h * maxSide) / w);
-        w = maxSide;
-      } else {
-        w = Math.round((w * maxSide) / h);
-        h = maxSide;
-      }
-    }
-    var canvas = document.createElement("canvas");
-    canvas.width = w;
-    canvas.height = h;
-    var ctx = canvas.getContext("2d");
-    ctx.drawImage(img, 0, 0, w, h);
-    var dataUrl = canvas.toDataURL("image/jpeg", 0.72);
-    canvas.width = 0;
-    canvas.height = 0;
-    if (!dataUrl || dataUrl === "data:,") throw new Error("图片压缩失败");
-    return dataUrl;
+    // 默认更小：足迹照片会打进整本 JSON，太大就同步失败
+    return drawImageToJpegWithOpts(img, 960, 0.58);
   }
 
   function loadImageFromBlob(blob) {
@@ -2750,7 +2886,7 @@ document.addEventListener("DOMContentLoaded", function () {
         return heic2any({
           blob: file,
           toType: "image/jpeg",
-          quality: 0.82
+          quality: 0.6
         }).then(function (result) {
           return Array.isArray(result) ? result[0] : result;
         });
