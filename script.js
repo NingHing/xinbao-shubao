@@ -174,22 +174,11 @@ document.addEventListener("DOMContentLoaded", function () {
     target.hidden = false;
     target.classList.add("is-active");
     document.body.dataset.view = name;
-    syncTabBar(name);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function syncTabBar(name) {
-    document.querySelectorAll(".app-tab").forEach(function (tab) {
-      var on = tab.getAttribute("data-tab") === name;
-      tab.classList.toggle("is-active", on);
-      if (on) tab.setAttribute("aria-current", "page");
-      else tab.removeAttribute("aria-current");
-    });
-  }
 
   function showAppChrome() {
-    var tabbar = document.getElementById("app-tabbar");
-    if (tabbar) tabbar.hidden = false;
     var settingsBtn = document.getElementById("btn-open-settings");
     if (settingsBtn) settingsBtn.hidden = false;
   }
