@@ -678,31 +678,41 @@ body.is-locked .app-settings-btn {
   color: var(--rose-deep);
 }
 
-.tile-grid {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 0.65rem;
+.tile-rail {
   width: 100%;
-  align-items: stretch;
+  margin: 0 0 1.35rem;
   animation: rise 0.8s ease 0.1s both;
 }
 
-.tile-grid .tile:nth-child(5) {
-  grid-column: auto;
-  width: auto;
-  justify-self: stretch;
+.tile-grid {
+  display: flex;
+  gap: 0.75rem;
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 0.15rem;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.35rem 0.15rem 0.65rem;
+  scrollbar-width: none;
+}
+
+.tile-grid::-webkit-scrollbar {
+  display: none;
 }
 
 .tile {
+  flex: 0 0 auto;
+  width: min(42vw, 9.75rem);
   aspect-ratio: 1 / 1;
-  width: 100%;
+  scroll-snap-align: start;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 0.3rem;
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 16px;
   background: linear-gradient(165deg, #ffffff 0%, #f8eef2 100%);
   color: var(--ink);
   cursor: pointer;
@@ -728,18 +738,27 @@ body.is-locked .app-settings-btn {
 
 .tile-name {
   font-family: var(--font-display);
-  font-size: clamp(0.85rem, 1.8vw, 1.1rem);
+  font-size: clamp(0.95rem, 2.4vw, 1.15rem);
   letter-spacing: 0.06em;
   font-weight: 600;
   text-align: center;
   line-height: 1.25;
-  padding: 0 0.2rem;
+  padding: 0 0.35rem;
 }
 
-@media (max-width: 640px) {
-  .tile-name {
-    font-size: 0.92rem;
-    letter-spacing: 0.03em;
+/* 宽屏仍可一眼看完五个 */
+@media (min-width: 900px) {
+  .tile-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    overflow: visible;
+    scroll-snap-type: none;
+    padding: 0.25rem 0;
+  }
+
+  .tile {
+    width: 100%;
+    scroll-snap-align: unset;
   }
 }
 
@@ -1512,17 +1531,6 @@ body.is-locked .app-settings-btn {
     margin-bottom: 1.1rem;
   }
 
-  /* 手机：两列瓷砖，第 5 个居中，字更大更好点 */
-  .tile-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.7rem;
-  }
-
-  .tile-grid .tile:nth-child(5) {
-    grid-column: 1 / -1;
-    width: min(48%, 11rem);
-    justify-self: center;
-  }
 
   .tile {
     border-radius: 16px;
