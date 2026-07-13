@@ -436,25 +436,36 @@
           <label>结束日期<input name="dateEnd" type="date" required /></label>
           <label class="full">总花销（元）<input name="cost" type="number" min="0" step="0.01" placeholder="例如：1280" /></label>
           <label class="full">一句话<textarea name="note" rows="2" placeholder="这次旅程最记得什么？"></textarea></label>
-          <div class="full photo-field">
-            <p class="photo-field-label">照片（最多 5 张）</p>
-            <input
-              id="place-photos-input"
-              class="visually-hidden-file"
-              name="photos"
-              type="file"
-              accept="image/*"
-              multiple
-              tabindex="-1"
-            />
-            <div id="place-photo-preview" class="photo-preview" aria-live="polite"></div>
-            <p class="form-hint">点虚线「+」添加。左右箭头可调整照片顺序（左边更靠前）。支持 JPG / PNG；苹果 HEIC 也会尽量自动转换。照片会自动压缩；同步时尽量传到云相册。每条建议 2～3 张。</p>
-          </div>
           <div class="modal-actions">
             <button type="button" class="btn btn-ghost" data-close-place-modal>取消</button>
             <button type="submit" class="btn" id="btn-place-save">保存</button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <div class="modal" id="modal-place-photos" hidden>
+      <div class="modal-backdrop" data-close-place-photos-modal></div>
+      <div class="modal-panel modal-panel--wide" role="dialog" aria-labelledby="modal-place-photos-title">
+        <h3 id="modal-place-photos-title">编辑照片</h3>
+        <p class="form-hint" id="place-photos-subtitle"></p>
+        <div class="photo-field">
+          <p class="photo-field-label">照片（最多 5 张）</p>
+          <input
+            id="place-photos-input"
+            class="visually-hidden-file"
+            type="file"
+            accept="image/*"
+            multiple
+            tabindex="-1"
+          />
+          <div id="place-photo-preview" class="photo-preview" aria-live="polite"></div>
+          <p class="form-hint">点虚线「+」添加。左右箭头可调整照片顺序（左边更靠前）。支持 JPG / PNG；苹果 HEIC 也会尽量自动转换。照片会自动压缩；同步时尽量传到云相册。每条建议 2～3 张。</p>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" data-close-place-photos-modal>取消</button>
+          <button type="button" class="btn" id="btn-place-photos-save">保存照片</button>
+        </div>
       </div>
     </div>
   </div>
@@ -720,7 +731,7 @@
     })();
   </script>
   <script src="seed-data.js?v=20260713-recover-sweets"></script>
-  <script src="script.js?v=draft-no-restore-toast-v1"></script>
+  <script src="script.js?v=place-photos-split-v1"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", function () {

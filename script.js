@@ -2552,6 +2552,9 @@ document.addEventListener("DOMContentLoaded", function () {
         '<div class="entry-actions">' +
         starButtonHtml("places", item.id, item.starred) +
         editButtonHtml("places", item.id) +
+        '<button type="button" class="btn-mini" data-edit-place-photos="' +
+        escapeText(item.id) +
+        '">照片</button>' +
         '<button type="button" class="btn-delete" data-type="places" data-id="' +
         escapeText(item.id) +
         '">删除</button>' +
@@ -3075,15 +3078,18 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  // ----- 足迹弹窗 + 照片 -----
+  // ----- 足迹文字弹窗 + 独立照片弹窗 -----
   var placeModal = document.getElementById("modal-place");
+  var placePhotosModal = document.getElementById("modal-place-photos");
   var btnPlaceAdd = document.getElementById("btn-place-add");
   var placePhotosInput = document.getElementById("place-photos-input");
   var placePhotoPreview = document.getElementById("place-photo-preview");
-  var pendingPlacePhotos = []; // 待保存的压缩图（base64）
+  var pendingPlacePhotos = [];
+  var editingPlacePhotoId = null;
   var MAX_PLACE_PHOTOS = 5;
 
   function renderPlacePreview() {
+    if (!placePhotoPreview) return;
     var html = pendingPlacePhotos
       .map(function (src, i) {
         var canLeft = i > 0;
@@ -3252,16 +3258,13 @@ document.addEventListener("DOMContentLoaded", function () {
       form.dateEnd.value = item.dateEnd || "";
       form.cost.value = item.cost != null ? item.cost : "";
       form.note.value = item.note || "";
-      pendingPlacePhotos = Array.isArray(item.photos) ? item.photos.slice() : [];
     } else {
       form.dateStart.value = todayStr();
       form.dateEnd.value = todayStr();
-      pendingPlacePhotos = [];
     }
     setActiveDraft("places", editingId);
     restoreDraftToForm("places", editingId, form);
-    renderPlacePreview();
-    snapshotDraftBaseline(form, pendingPlacePhotos);
+    snapshotDraftBaseline(form);
     placeModal.hidden = false;
     form.title.focus();
   }
@@ -3270,26 +3273,98 @@ document.addEventListener("DOMContentLoaded", function () {
     opts = opts || {};
     var form = document.getElementById("form-place");
     if (!opts.skipDraftSave && form) {
-      maybePersistDraftOnClose(
-        "places",
-        editingId,
-        form,
-        "",
-        pendingPlacePhotos
-      );
+      maybePersistDraftOnClose("places", editingId, form);
     }
     placeModal.hidden = true;
     if (form) form.reset();
-    pendingPlacePhotos = [];
-    renderPlacePreview();
     clearEditing();
     clearActiveDraft();
     setModalTitle("modal-place-title", "添加足迹");
   }
 
+  function openPlacePhotosModal(item) {
+    if (!item || !item.id || !placePhotosModal) return;
+    editingPlacePhotoId = item.id;
+    pendingPlacePhotos = Array.isArray(item.photos) ? item.photos.slice() : [];
+    setModalTitle(
+      "modal-place-photos-title",
+      "编辑照片 · " + (item.title || "足迹")
+    );
+    var sub = document.getElementById("place-photos-subtitle");
+    if (sub) {
+      var range =
+        (item.dateStart || "") +
+        (item.dateEnd && item.dateEnd !== item.dateStart
+          ? " ～ " + item.dateEnd
+          : "");
+      sub.textContent = range ? range : "为这条足迹添加或调整照片";
+    }
+    renderPlacePreview();
+    placePhotosModal.hidden = false;
+  }
+
+  function closePlacePhotosModal() {
+    if (placePhotosModal) placePhotosModal.hidden = true;
+    editingPlacePhotoId = null;
+    pendingPlacePhotos = [];
+    if (placePhotosInput) placePhotosInput.value = "";
+    renderPlacePreview();
+    setModalTitle("modal-place-photos-title", "编辑照片");
+    var sub = document.getElementById("place-photos-subtitle");
+    if (sub) sub.textContent = "";
+  }
+
+  function savePlacePhotos() {
+    if (!editingPlacePhotoId) return;
+    var placeItem = findItem("places", editingPlacePhotoId);
+    if (!placeItem) {
+      closePlacePhotosModal();
+      return;
+    }
+    var placeId = editingPlacePhotoId;
+    var saveBtn = document.getElementById("btn-place-photos-save");
+    if (saveBtn) saveBtn.disabled = true;
+    showToast("正在保存足迹照片…");
+
+    uploadPlacePhotosForSync(pendingPlacePhotos.slice(), placeId)
+      .then(function (up) {
+        pendingPlacePhotos = up.photos.slice();
+        if (up.failed && !up.uploaded) {
+          alert(
+            "照片已保存在这台设备，但没能传到云端，另一台可能暂时看不到。\n\n可以：\n1）在 Supabase 运行 schema-place-photos.sql 开启云相册\n2）每条足迹少放几张后再保存并点「同步最新」"
+          );
+        } else if (up.failed) {
+          showToast("部分照片未传到云端，已尽量保留");
+        }
+
+        try {
+          placeItem.photos = up.photos.slice();
+          touchUpdatedAt(placeItem);
+          saveData();
+          noteLocalWrite("places");
+        } catch (err) {
+          alert("保存失败：照片可能太大或太多，请减少照片后再试。");
+          return;
+        }
+        renderPlaces();
+        closePlacePhotosModal();
+        showToast("已保存照片");
+      })
+      .finally(function () {
+        if (saveBtn) saveBtn.disabled = false;
+      });
+  }
+
   btnPlaceAdd.addEventListener("click", function () {
     openPlaceModal(null);
   });
+
+  var btnPlacePhotosSave = document.getElementById("btn-place-photos-save");
+  if (btnPlacePhotosSave) {
+    btnPlacePhotosSave.addEventListener("click", function () {
+      savePlacePhotos();
+    });
+  }
 
   // ----- 足迹照片浏览（左右箭头 / 滑动 / 键盘）-----
   var lightboxEl = document.getElementById("lightbox");
@@ -3406,14 +3481,34 @@ document.addEventListener("DOMContentLoaded", function () {
   document.body.addEventListener("click", function (e) {
     if (e.target.closest(".photo-add-tile")) {
       e.preventDefault();
-      if (placePhotosInput) placePhotosInput.click();
+      if (placePhotosModal && !placePhotosModal.hidden && placePhotosInput) {
+        placePhotosInput.click();
+      }
       return;
     }
 
-    if (e.target.closest("[data-close-place-modal]")) closePlaceModal();
+    if (e.target.closest("[data-close-place-modal]")) {
+      closePlaceModal();
+      return;
+    }
+
+    if (e.target.closest("[data-close-place-photos-modal]")) {
+      closePlacePhotosModal();
+      return;
+    }
+
+    var placePhotosBtn = e.target.closest("[data-edit-place-photos]");
+    if (placePhotosBtn) {
+      var photosPlace = findItem(
+        "places",
+        placePhotosBtn.getAttribute("data-edit-place-photos")
+      );
+      if (photosPlace) openPlacePhotosModal(photosPlace);
+      return;
+    }
 
     var removeBtn = e.target.closest("[data-remove-photo]");
-    if (removeBtn) {
+    if (removeBtn && placePhotosModal && !placePhotosModal.hidden) {
       var idx = Number(removeBtn.getAttribute("data-remove-photo"));
       pendingPlacePhotos.splice(idx, 1);
       renderPlacePreview();
@@ -3421,7 +3516,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     var moveBtn = e.target.closest("[data-move-photo]");
-    if (moveBtn && !moveBtn.disabled) {
+    if (moveBtn && !moveBtn.disabled && placePhotosModal && !placePhotosModal.hidden) {
       var from = Number(moveBtn.getAttribute("data-idx"));
       var dir = moveBtn.getAttribute("data-move-photo");
       var to = dir === "left" ? from - 1 : from + 1;
@@ -3455,62 +3550,67 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   });
 
-  placePhotosInput.addEventListener("change", function () {
-    var files = Array.prototype.slice.call(placePhotosInput.files || []);
-    placePhotosInput.value = "";
-    var room = MAX_PLACE_PHOTOS - pendingPlacePhotos.length;
-    if (room <= 0) {
-      alert("最多只能添加 " + MAX_PLACE_PHOTOS + " 张照片。");
-      return;
-    }
-    var selected = files.slice(0, room);
-    if (files.length > room) {
-      alert("最多 " + MAX_PLACE_PHOTOS + " 张，已为你保留前 " + room + " 张。");
-    }
+  if (placePhotosInput) {
+    placePhotosInput.addEventListener("change", function () {
+      var files = Array.prototype.slice.call(placePhotosInput.files || []);
+      placePhotosInput.value = "";
+      var room = MAX_PLACE_PHOTOS - pendingPlacePhotos.length;
+      if (room <= 0) {
+        alert("最多只能添加 " + MAX_PLACE_PHOTOS + " 张照片。");
+        return;
+      }
+      var selected = files.slice(0, room);
+      if (files.length > room) {
+        alert("最多 " + MAX_PLACE_PHOTOS + " 张，已为你保留前 " + room + " 张。");
+      }
 
-    showToast("正在处理照片…");
-    var ok = [];
-    var fail = 0;
-    var heicFail = 0;
+      showToast("正在处理照片…");
+      var ok = [];
+      var fail = 0;
+      var heicFail = 0;
 
-    selected
-      .reduce(function (chain, file) {
-        return chain.then(function () {
-          return compressImageFile(file)
-            .then(function (src) {
-              ok.push(src);
-            })
-            .catch(function (err) {
-              fail += 1;
-              if (isHeicFile(file) || (err && String(err.message || "").indexOf("HEIC") !== -1)) {
-                heicFail += 1;
-              }
-            });
-        });
-      }, Promise.resolve())
-      .then(function () {
-        if (ok.length) {
-          pendingPlacePhotos = pendingPlacePhotos.concat(ok);
-          renderPlacePreview();
-          showToast("已添加 " + ok.length + " 张");
-        }
-        if (fail) {
-          if (heicFail && !ok.length) {
-            alert(
-              "这些照片是苹果相册的 HEIC 格式，当前浏览器转换失败。\n\n可以：\n1）用 Safari 打开本站再试\n2）先把照片存成 JPG / 截图后再上传"
-            );
-          } else {
-            alert(
-              "有 " +
-                fail +
-                " 张照片无法读取（常见于 HEIC 或过大的原图）。已保留成功的 " +
-                ok.length +
-                " 张。"
-            );
+      selected
+        .reduce(function (chain, file) {
+          return chain.then(function () {
+            return compressImageFile(file)
+              .then(function (src) {
+                ok.push(src);
+              })
+              .catch(function (err) {
+                fail += 1;
+                if (
+                  isHeicFile(file) ||
+                  (err && String(err.message || "").indexOf("HEIC") !== -1)
+                ) {
+                  heicFail += 1;
+                }
+              });
+          });
+        }, Promise.resolve())
+        .then(function () {
+          if (ok.length) {
+            pendingPlacePhotos = pendingPlacePhotos.concat(ok);
+            renderPlacePreview();
+            showToast("已添加 " + ok.length + " 张");
           }
-        }
-      });
-  });
+          if (fail) {
+            if (heicFail && !ok.length) {
+              alert(
+                "这些照片是苹果相册的 HEIC 格式，当前浏览器转换失败。\n\n可以：\n1）用 Safari 打开本站再试\n2）先把照片存成 JPG / 截图后再上传"
+              );
+            } else {
+              alert(
+                "有 " +
+                  fail +
+                  " 张照片无法读取（常见于 HEIC 或过大的原图）。已保留成功的 " +
+                  ok.length +
+                  " 张。"
+              );
+            }
+          }
+        });
+    });
+  }
 
   function openEdit(type, id) {
     var item = findItem(type, id);
@@ -3530,7 +3630,7 @@ document.addEventListener("DOMContentLoaded", function () {
       var fd = new FormData(form);
       var isEdit = !!editingId;
 
-      // 足迹单独处理（含时间段、花销、照片）
+      // 足迹文字：只保存字段，不碰照片、不弹照片提示
       if (type === "places") {
         var dateStart = (fd.get("dateStart") || "").toString();
         var dateEnd = (fd.get("dateEnd") || "").toString();
@@ -3538,64 +3638,47 @@ document.addEventListener("DOMContentLoaded", function () {
           alert("结束日期不能早于开始日期。");
           return;
         }
-        var placeIdForPhotos = isEdit ? editingId : uid();
         var placeFields = {
           title: (fd.get("title") || "").toString().trim(),
           dateStart: dateStart,
           dateEnd: dateEnd || dateStart,
           cost: Number(fd.get("cost")) || 0,
-          note: (fd.get("note") || "").toString().trim(),
-          photos: pendingPlacePhotos.slice()
+          note: (fd.get("note") || "").toString().trim()
         };
-        var saveBtn = form.querySelector('button[type="submit"]');
-        if (saveBtn) saveBtn.disabled = true;
-        showToast("正在保存足迹照片…");
-
-        uploadPlacePhotosForSync(placeFields.photos, placeIdForPhotos)
-          .then(function (up) {
-            placeFields.photos = up.photos;
-            pendingPlacePhotos = up.photos.slice();
-            if (up.failed && !up.uploaded) {
-              alert(
-                "照片已保存在这台设备，但没能传到云端，另一台可能暂时看不到。\n\n可以：\n1）在 Supabase 运行 schema-place-photos.sql 开启云相册\n2）每条足迹少放几张后再保存并点「同步最新」"
-              );
-            } else if (up.failed) {
-              showToast("部分照片未传到云端，已尽量保留");
-            }
-
-            try {
-              if (isEdit) {
-                var oldPlace = findItem("places", editingId);
-                if (!oldPlace) return;
-                oldPlace.title = placeFields.title;
-                oldPlace.dateStart = placeFields.dateStart;
-                oldPlace.dateEnd = placeFields.dateEnd;
-                oldPlace.cost = placeFields.cost;
-                oldPlace.note = placeFields.note;
-                oldPlace.photos = placeFields.photos;
-                touchUpdatedAt(oldPlace);
-                saveData();
-                noteLocalWrite("places");
-              } else {
-                placeFields.id = placeIdForPhotos;
-                touchUpdatedAt(placeFields);
-                data.places.push(placeFields);
-                saveData();
-                noteLocalWrite("places");
-              }
-            } catch (err) {
-              if (!isEdit) data.places.pop();
-              alert("保存失败：照片可能太大或太多，请减少照片后再试。");
-              return;
-            }
-            renderPlaces();
-            clearDraft(draftSlot("places", editingId));
-            closePlaceModal({ skipDraftSave: true });
-            showToast(isEdit ? "已更新足迹" : "已保存足迹");
-          })
-          .finally(function () {
-            if (saveBtn) saveBtn.disabled = false;
-          });
+        var openedPhotosAfterCreate = null;
+        try {
+          if (isEdit) {
+            var oldPlace = findItem("places", editingId);
+            if (!oldPlace) return;
+            oldPlace.title = placeFields.title;
+            oldPlace.dateStart = placeFields.dateStart;
+            oldPlace.dateEnd = placeFields.dateEnd;
+            oldPlace.cost = placeFields.cost;
+            oldPlace.note = placeFields.note;
+            touchUpdatedAt(oldPlace);
+            saveData();
+            noteLocalWrite("places");
+          } else {
+            placeFields.id = uid();
+            placeFields.photos = [];
+            touchUpdatedAt(placeFields);
+            data.places.push(placeFields);
+            saveData();
+            noteLocalWrite("places");
+            openedPhotosAfterCreate = placeFields;
+          }
+        } catch (err) {
+          if (!isEdit && openedPhotosAfterCreate) data.places.pop();
+          alert("保存失败，请稍后再试。");
+          return;
+        }
+        renderPlaces();
+        clearDraft(draftSlot("places", editingId));
+        closePlaceModal({ skipDraftSave: true });
+        showToast(isEdit ? "已更新足迹" : "已保存足迹");
+        if (openedPhotosAfterCreate) {
+          openPlacePhotosModal(openedPhotosAfterCreate);
+        }
         return;
       }
 
