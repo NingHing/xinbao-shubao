@@ -720,6 +720,16 @@ document.addEventListener("DOMContentLoaded", function () {
       });
     }
 
+    var reloadBtn = document.getElementById("btn-reload-app");
+    if (reloadBtn) {
+      reloadBtn.addEventListener("click", function () {
+        showToast("正在刷新…");
+        setTimeout(function () {
+          location.reload();
+        }, 200);
+      });
+    }
+
     var settingsForm = document.getElementById("settings-auth-form");
     if (settingsForm) {
       settingsForm.addEventListener("submit", function (e) {

@@ -63,6 +63,14 @@
         <p id="settings-backup-msg" class="settings-hint" hidden></p>
       </section>
 
+      <section class="settings-section" aria-labelledby="settings-app-heading">
+        <h3 id="settings-app-heading" class="settings-section-title">应用</h3>
+        <p class="settings-hint">主屏幕打开时没有浏览器刷新键，需要更新页面时点这里。</p>
+        <div class="settings-actions">
+          <button type="button" class="btn" id="btn-reload-app">刷新并记</button>
+        </div>
+      </section>
+
       <section class="settings-section" aria-labelledby="settings-account-heading">
         <h3 id="settings-account-heading" class="settings-section-title">账户</h3>
         <div id="settings-account-logged-in" hidden>
@@ -650,7 +658,7 @@
     })();
   </script>
   <script src="seed-data.js?v=20260713-recover-sweets"></script>
-  <script src="script.js?v=tombstone-sync"></script>
+  <script src="script.js?v=reload-btn"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", function () {
