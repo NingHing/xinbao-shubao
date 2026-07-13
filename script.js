@@ -662,6 +662,10 @@ document.addEventListener("DOMContentLoaded", function () {
     return rows;
   }
 
+  var ACTIVITY_PREVIEW_LIMIT = 2;
+  var ACTIVITY_MAX_ITEMS = 8;
+  var activityListExpanded = false;
+
   function renderActivity() {
     if (!data) return;
     ensureLastSeen();
@@ -694,17 +698,29 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!unread.length) {
       section.hidden = true;
       listEl.innerHTML = "";
+      activityListExpanded = false;
       return;
     }
 
     section.hidden = false;
-    listEl.innerHTML = unread
-      .slice(0, 8)
-      .map(function (row) {
+    var items = unread.slice(0, ACTIVITY_MAX_ITEMS);
+    if (items.length <= ACTIVITY_PREVIEW_LIMIT) {
+      activityListExpanded = false;
+    }
+
+    var html = items
+      .map(function (row, index) {
+        var folded =
+          !activityListExpanded && index >= ACTIVITY_PREVIEW_LIMIT
+            ? " is-folded"
+            : "";
         return (
-          "<li><a class=\"activity-item\" href=\"#" +
+          '<li class="activity-row' +
+          folded +
+          '">' +
+          '<a class="activity-item" href="#' +
           escapeText(row.module) +
-          "\">" +
+          '">' +
           '<p class="activity-module">' +
           escapeText(MODULE_LABELS[row.module] || row.module) +
           "</p>" +
@@ -718,6 +734,25 @@ document.addEventListener("DOMContentLoaded", function () {
         );
       })
       .join("");
+
+    if (unread.length > ACTIVITY_PREVIEW_LIMIT) {
+      var moreCount = unread.length - ACTIVITY_PREVIEW_LIMIT;
+      if (activityListExpanded) {
+        html +=
+          '<li class="activity-toggle-row">' +
+          '<button type="button" class="activity-toggle" data-activity-toggle="collapse">收起</button>' +
+          "</li>";
+      } else {
+        html +=
+          '<li class="activity-toggle-row">' +
+          '<button type="button" class="activity-toggle" data-activity-toggle="expand">还有 ' +
+          moreCount +
+          " 条 · 展开</button>" +
+          "</li>";
+      }
+    }
+
+    listEl.innerHTML = html;
   }
 
   /** 自己写入后标已读，避免首页把自己刚写的当成「新动态」 */
@@ -2025,10 +2060,21 @@ document.addEventListener("DOMContentLoaded", function () {
   if (markAllSeenBtn) {
     markAllSeenBtn.addEventListener("click", function () {
       markAllModulesSeen();
+      activityListExpanded = false;
       renderActivity();
       showToast("已全部标为已读");
     });
   }
+
+  document.body.addEventListener("click", function (e) {
+    var toggleBtn = e.target && e.target.closest
+      ? e.target.closest("[data-activity-toggle]")
+      : null;
+    if (!toggleBtn) return;
+    var mode = toggleBtn.getAttribute("data-activity-toggle");
+    activityListExpanded = mode === "expand";
+    renderActivity();
+  });
 
   function uid() {
     return "id-" + Date.now() + "-" + Math.floor(Math.random() * 10000);

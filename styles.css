@@ -575,6 +575,10 @@ body.is-locked .app-settings-btn {
   gap: 0.45rem;
 }
 
+.activity-row.is-folded {
+  display: none;
+}
+
 .activity-item {
   display: block;
   text-decoration: none;
@@ -606,6 +610,31 @@ body.is-locked .app-settings-btn {
   margin-top: 0.2rem;
   font-size: 0.75rem;
   color: var(--muted);
+}
+
+.activity-toggle-row {
+  list-style: none;
+  display: flex;
+  justify-content: center;
+  padding-top: 0.15rem;
+}
+
+.activity-toggle {
+  font: inherit;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  color: var(--rose-deep);
+  background: transparent;
+  border: none;
+  padding: 0.35rem 0.7rem;
+  cursor: pointer;
+  border-radius: 999px;
+}
+
+.activity-toggle:hover,
+.activity-toggle:focus-visible {
+  background: rgba(95, 127, 154, 0.1);
+  outline: none;
 }
 
 .home-reminders {
