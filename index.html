@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="icons/icon-180.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=tiles-original" />
+  <link rel="stylesheet" href="styles.css?v=activity-v1" />
 </head>
 <body class="is-locked" data-view="home">
   <!-- App 顶栏：设置入口（解锁后显示） -->
@@ -179,6 +179,17 @@
       <p class="privacy-note" id="privacy-note">私密日记 · 点板块进入</p>
     </header>
 
+    <section class="home-activity" id="home-activity" hidden aria-label="新动态">
+      <div class="activity-head">
+        <div>
+          <p class="activity-kicker">NEW</p>
+          <h2 class="activity-title">新动态</h2>
+        </div>
+        <button type="button" class="btn btn-ghost btn-mini-bar" id="btn-mark-all-seen">全部已读</button>
+      </div>
+      <ul class="activity-list" id="list-activity"></ul>
+    </section>
+
     <section class="home-reminders" aria-label="纪念日提醒">
       <div class="reminders-head">
         <p class="reminders-kicker">REMINDERS</p>
@@ -188,23 +199,28 @@
     </section>
 
     <nav class="tile-grid" aria-label="功能入口">
-      <a class="tile" href="#anniversaries">
+      <a class="tile" href="#anniversaries" data-module="anniversaries">
+        <span class="tile-badge" data-badge-for="anniversaries" hidden></span>
         <span class="tile-num">01</span>
         <span class="tile-name">纪念日</span>
       </a>
-      <a class="tile" href="#events">
+      <a class="tile" href="#events" data-module="events">
+        <span class="tile-badge" data-badge-for="events" hidden></span>
         <span class="tile-num">02</span>
         <span class="tile-name">重要的事</span>
       </a>
-      <a class="tile" href="#sweets">
+      <a class="tile" href="#sweets" data-module="sweets">
+        <span class="tile-badge" data-badge-for="sweets" hidden></span>
         <span class="tile-num">03</span>
         <span class="tile-name">想对你说</span>
       </a>
-      <a class="tile" href="#places">
+      <a class="tile" href="#places" data-module="places">
+        <span class="tile-badge" data-badge-for="places" hidden></span>
         <span class="tile-num">04</span>
         <span class="tile-name">足迹</span>
       </a>
-      <a class="tile" href="#fights">
+      <a class="tile" href="#fights" data-module="fights">
+        <span class="tile-badge" data-badge-for="fights" hidden></span>
         <span class="tile-num">05</span>
         <span class="tile-name">和解</span>
       </a>
@@ -659,7 +675,7 @@
     })();
   </script>
   <script src="seed-data.js?v=20260713-recover-sweets"></script>
-  <script src="script.js?v=soft-refresh"></script>
+  <script src="script.js?v=activity-v1"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", function () {

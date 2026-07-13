@@ -492,6 +492,82 @@ body.is-locked .app-settings-btn {
   text-align: center;
 }
 
+.home-activity {
+  width: 100%;
+  margin: 0 0 1.2rem;
+  padding: 0.9rem 1rem 1rem;
+  background: rgba(255, 252, 253, 0.8);
+  border: 1px solid rgba(217, 123, 146, 0.28);
+  border-radius: 16px;
+  animation: rise 0.8s ease both;
+}
+
+.home-activity[hidden] {
+  display: none !important;
+}
+
+.activity-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.55rem;
+}
+
+.activity-kicker {
+  font-size: 0.65rem;
+  letter-spacing: 0.28em;
+  color: var(--gold);
+}
+
+.activity-title {
+  margin-top: 0.15rem;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--rose-deep);
+}
+
+.activity-list {
+  list-style: none;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.activity-item {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  padding: 0.65rem 0.75rem;
+  border-radius: 12px;
+  background: rgba(248, 238, 242, 0.9);
+  border: 1px solid rgba(217, 123, 146, 0.16);
+}
+
+.activity-item:active {
+  background: rgba(242, 220, 228, 0.95);
+}
+
+.activity-module {
+  font-size: 0.78rem;
+  color: var(--rose-deep);
+  font-weight: 600;
+  margin-bottom: 0.15rem;
+}
+
+.activity-preview {
+  font-size: 0.88rem;
+  color: var(--ink);
+  line-height: 1.45;
+}
+
+.activity-meta {
+  margin-top: 0.2rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
 .home-reminders {
   width: 100%;
   margin: 0 0 1.35rem;
@@ -694,6 +770,7 @@ body.is-locked .app-settings-btn {
 }
 
 .tile {
+  position: relative;
   aspect-ratio: 1 / 1;
   width: 100%;
   display: flex;
@@ -710,6 +787,27 @@ body.is-locked .app-settings-btn {
   text-decoration: none;
   box-shadow: 0 8px 20px rgba(196, 95, 122, 0.08);
   transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.tile-badge {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--rose-deep);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.15rem;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(196, 95, 122, 0.35);
+}
+
+.tile-badge[hidden] {
+  display: none !important;
 }
 
 .tile:hover,

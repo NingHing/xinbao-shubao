@@ -6,7 +6,16 @@ document.addEventListener("DOMContentLoaded", function () {
   var START_DATE = "2025-12-04";
   var STORAGE_KEY = "xinbao-shubao-journal-v1";
   var SEED_VERSION_KEY = "xinbao-shubao-seed-v";
+  var LAST_SEEN_KEY = "xinbao-shubao-last-seen-v1";
   var PRODUCT_NAME = "并记";
+  var MODULE_KEYS = ["anniversaries", "events", "sweets", "places", "fights"];
+  var MODULE_LABELS = {
+    anniversaries: "纪念日",
+    events: "重要的事",
+    sweets: "想对你说",
+    places: "足迹",
+    fights: "和解"
+  };
 
   var defaultData = {
     siteTitle: PRODUCT_NAME,
@@ -198,6 +207,200 @@ document.addEventListener("DOMContentLoaded", function () {
     return item;
   }
 
+  function loadLastSeen() {
+    try {
+      var raw = localStorage.getItem(LAST_SEEN_KEY);
+      if (!raw) return null;
+      var parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" ? parsed : null;
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function saveLastSeen(seen) {
+    try {
+      localStorage.setItem(LAST_SEEN_KEY, JSON.stringify(seen || {}));
+    } catch (err) {}
+  }
+
+  /** 首次启用：记为 7 天前已读，避免历史条目刷屏，又不会漏掉最近对方写的 */
+  function ensureLastSeen() {
+    var seen = loadLastSeen();
+    if (seen) return seen;
+    var baseline = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    seen = {};
+    MODULE_KEYS.forEach(function (key) {
+      seen[key] = baseline;
+    });
+    saveLastSeen(seen);
+    return seen;
+  }
+
+  function markModuleSeen(module) {
+    if (MODULE_KEYS.indexOf(module) < 0) return;
+    var seen = ensureLastSeen();
+    seen[module] = new Date().toISOString();
+    saveLastSeen(seen);
+  }
+
+  function markAllModulesSeen() {
+    var now = new Date().toISOString();
+    var seen = ensureLastSeen();
+    MODULE_KEYS.forEach(function (key) {
+      seen[key] = now;
+    });
+    saveLastSeen(seen);
+  }
+
+  function itemStamp(item) {
+    if (!item || !item.updatedAt) return 0;
+    var t = Date.parse(item.updatedAt);
+    return isNaN(t) ? 0 : t;
+  }
+
+  function getUnreadForModule(module) {
+    if (!data) return [];
+    var seen = ensureLastSeen();
+    var seenAt = Date.parse(seen[module] || "") || 0;
+    return (data[module] || []).filter(function (item) {
+      var t = itemStamp(item);
+      return t > 0 && t > seenAt;
+    });
+  }
+
+  function activityPreview(module, item) {
+    if (module === "sweets") {
+      var who = item.author ? item.author + "：" : "";
+      return who + (item.note || "写了一段话");
+    }
+    if (module === "fights") {
+      return item.title || item.note || "记下一次和解";
+    }
+    if (module === "places") {
+      return item.title || "新的足迹";
+    }
+    if (module === "events") {
+      return item.title || "记下重要的事";
+    }
+    return item.title || item.note || "有新内容";
+  }
+
+  function truncateText(s, n) {
+    s = String(s || "")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (s.length <= n) return s;
+    return s.slice(0, n) + "…";
+  }
+
+  function formatRelativeTime(iso) {
+    var t = Date.parse(iso || "");
+    if (!t) return "";
+    var diff = Math.max(0, Date.now() - t);
+    if (diff < 60 * 1000) return "刚刚";
+    if (diff < 60 * 60 * 1000) return Math.floor(diff / 60000) + " 分钟前";
+    if (diff < 24 * 60 * 60 * 1000) {
+      return Math.floor(diff / 3600000) + " 小时前";
+    }
+    var d = new Date(t);
+    var today = new Date();
+    var yday = new Date();
+    yday.setDate(today.getDate() - 1);
+    if (d.toDateString() === today.toDateString()) {
+      return (
+        "今天 " +
+        String(d.getHours()).padStart(2, "0") +
+        ":" +
+        String(d.getMinutes()).padStart(2, "0")
+      );
+    }
+    if (d.toDateString() === yday.toDateString()) return "昨天";
+    return d.getMonth() + 1 + "月" + d.getDate() + "日";
+  }
+
+  function collectUnreadActivities() {
+    if (!data) return [];
+    var rows = [];
+    MODULE_KEYS.forEach(function (module) {
+      getUnreadForModule(module).forEach(function (item) {
+        rows.push({
+          module: module,
+          item: item,
+          updatedAt: item.updatedAt
+        });
+      });
+    });
+    rows.sort(function (a, b) {
+      return itemStamp(b.item) - itemStamp(a.item);
+    });
+    return rows;
+  }
+
+  function renderActivity() {
+    if (!data) return;
+    ensureLastSeen();
+    var section = document.getElementById("home-activity");
+    var listEl = document.getElementById("list-activity");
+    if (!section || !listEl) return;
+
+    var unread = collectUnreadActivities();
+    var counts = {};
+    MODULE_KEYS.forEach(function (key) {
+      counts[key] = 0;
+    });
+    unread.forEach(function (row) {
+      counts[row.module] += 1;
+    });
+
+    MODULE_KEYS.forEach(function (module) {
+      var badge = document.querySelector('[data-badge-for="' + module + '"]');
+      if (!badge) return;
+      var n = counts[module];
+      if (n > 0) {
+        badge.hidden = false;
+        badge.textContent = n > 9 ? "9+" : String(n);
+      } else {
+        badge.hidden = true;
+        badge.textContent = "";
+      }
+    });
+
+    if (!unread.length) {
+      section.hidden = true;
+      listEl.innerHTML = "";
+      return;
+    }
+
+    section.hidden = false;
+    listEl.innerHTML = unread
+      .slice(0, 8)
+      .map(function (row) {
+        return (
+          "<li><a class=\"activity-item\" href=\"#" +
+          escapeText(row.module) +
+          "\">" +
+          '<p class="activity-module">' +
+          escapeText(MODULE_LABELS[row.module] || row.module) +
+          "</p>" +
+          '<p class="activity-preview">' +
+          escapeText(truncateText(activityPreview(row.module, row.item), 48)) +
+          "</p>" +
+          '<p class="activity-meta">' +
+          escapeText(formatRelativeTime(row.updatedAt)) +
+          "</p>" +
+          "</a></li>"
+        );
+      })
+      .join("");
+  }
+
+  /** 自己写入后标已读，避免首页把自己刚写的当成「新动态」 */
+  function noteLocalWrite(type) {
+    if (type) markModuleSeen(type);
+    renderActivity();
+  }
+
   function applyRecoveredSweets(target) {
     if (!target) return target;
     target.sweets = mergeById(target.sweets, RECOVERED_SWEETS);
@@ -217,6 +420,10 @@ document.addEventListener("DOMContentLoaded", function () {
     target.hidden = false;
     target.classList.add("is-active");
     document.body.dataset.view = name;
+    if (name !== "home") {
+      markModuleSeen(name);
+    }
+    renderActivity();
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -1031,6 +1238,15 @@ document.addEventListener("DOMContentLoaded", function () {
     }, 1700);
   }
 
+  var markAllSeenBtn = document.getElementById("btn-mark-all-seen");
+  if (markAllSeenBtn) {
+    markAllSeenBtn.addEventListener("click", function () {
+      markAllModulesSeen();
+      renderActivity();
+      showToast("已全部标为已读");
+    });
+  }
+
   function uid() {
     return "id-" + Date.now() + "-" + Math.floor(Math.random() * 10000);
   }
@@ -1694,6 +1910,7 @@ document.addEventListener("DOMContentLoaded", function () {
     applySiteTitle();
     ["anniversaries", "events", "sweets", "places", "fights"].forEach(renderList);
     renderReminders();
+    renderActivity();
   }
 
   function todayStr() {
@@ -2314,11 +2531,13 @@ document.addEventListener("DOMContentLoaded", function () {
             oldPlace.photos = placeFields.photos;
             touchUpdatedAt(oldPlace);
             saveData();
+            noteLocalWrite("places");
           } else {
             placeFields.id = uid();
             touchUpdatedAt(placeFields);
             data.places.push(placeFields);
             saveData();
+            noteLocalWrite("places");
           }
         } catch (err) {
           if (!isEdit) data.places.pop();
@@ -2367,6 +2586,7 @@ document.addEventListener("DOMContentLoaded", function () {
           data.events.push(eventFields);
         }
         saveData();
+        noteLocalWrite("events");
         renderEvents();
         closeEventModal();
         showToast(isEdit ? "已更新" : "已记下重要的事");
@@ -2433,6 +2653,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       saveData();
+      noteLocalWrite(type);
       renderList(type);
       if (type === "anniversaries") renderReminders();
 
@@ -2471,6 +2692,7 @@ document.addEventListener("DOMContentLoaded", function () {
         touchUpdatedAt(item);
         reindexOrders(list);
         saveData();
+        noteLocalWrite("anniversaries");
         renderAnniversaries();
         return;
       }
@@ -2479,6 +2701,7 @@ document.addEventListener("DOMContentLoaded", function () {
         item.remind = !item.remind;
         touchUpdatedAt(item);
         saveData();
+        noteLocalWrite("anniversaries");
         renderAnniversaries();
         renderReminders();
         showToast(item.remind ? "已加入提醒" : "已移出提醒");
@@ -2501,6 +2724,7 @@ document.addEventListener("DOMContentLoaded", function () {
         touchUpdatedAt(visible[vIdx]);
         touchUpdatedAt(visible[swapWith]);
         saveData();
+        noteLocalWrite("anniversaries");
         renderAnniversaries();
         return;
       }
@@ -2518,6 +2742,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
     if (type === "anniversaries") reindexOrders(data.anniversaries);
     saveData();
+    noteLocalWrite(type);
     renderList(type);
     if (type === "anniversaries") renderReminders();
     showToast("已删除");
