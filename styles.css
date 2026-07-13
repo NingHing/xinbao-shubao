@@ -1128,6 +1128,12 @@ body.is-locked .app-settings-btn {
   border-left: 3px solid rgba(217, 123, 146, 0.55);
 }
 
+.sweet-reply--nested {
+  margin-left: calc(var(--reply-depth, 1) * 0.85rem);
+  background: rgba(248, 238, 242, 0.55);
+  border-left-color: rgba(217, 123, 146, 0.35);
+}
+
 .sweet-reply-top {
   display: flex;
   align-items: flex-start;
@@ -1146,6 +1152,15 @@ body.is-locked .app-settings-btn {
   display: flex;
   gap: 0.35rem;
   flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.sweet-reply-to {
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+  color: var(--muted, #8a7a80);
+  line-height: 1.4;
 }
 
 .sweet-reply-note {

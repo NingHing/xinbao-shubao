@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="icons/icon-180.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=nicknames-v1" />
+  <link rel="stylesheet" href="styles.css?v=nested-reply-v1" />
 </head>
 <body class="is-locked" data-view="home">
   <!-- App 顶栏：设置入口（解锁后显示） -->
@@ -444,6 +444,7 @@
         <form class="entry-form entry-form--modal" id="form-sweet-reply">
           <input type="hidden" name="parentId" value="" />
           <input type="hidden" name="replyId" value="" />
+          <input type="hidden" name="replyToId" value="" />
           <input type="hidden" name="author" id="sweet-reply-author-hidden" value="馨宝" />
           <fieldset class="full anni-kind-field">
             <legend class="anni-kind-legend">谁回复</legend>
@@ -793,7 +794,7 @@
     })();
   </script>
   <script src="seed-data.js?v=20260713-recover-sweets"></script>
-  <script src="script.js?v=my-role-all-v1"></script>
+  <script src="script.js?v=nested-reply-v1"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", function () {

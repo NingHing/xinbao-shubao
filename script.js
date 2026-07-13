@@ -315,6 +315,7 @@ document.addEventListener("DOMContentLoaded", function () {
               author: r.author || "",
               date: r.date || "",
               note: (r.note || "").trim(),
+              replyToId: r.replyToId || "",
               updatedAt: r.updatedAt || ""
             };
           })
@@ -3000,15 +3001,93 @@ document.addEventListener("DOMContentLoaded", function () {
     }).join("");
   }
 
+  function findReplyById(replies, replyId) {
+    var list = replies || [];
+    for (var i = 0; i < list.length; i++) {
+      if (list[i] && list[i].id === replyId) return list[i];
+    }
+    return null;
+  }
+
+  /** 收集某条回复及其所有层层子回复的 id */
+  function collectReplySubtreeIds(replies, rootId) {
+    var ids = {};
+    if (!rootId) return ids;
+    ids[rootId] = true;
+    var changed = true;
+    while (changed) {
+      changed = false;
+      (replies || []).forEach(function (r) {
+        if (!r || !r.id || ids[r.id]) return;
+        if (r.replyToId && ids[r.replyToId]) {
+          ids[r.id] = true;
+          changed = true;
+        }
+      });
+    }
+    return ids;
+  }
+
+  function sweetReplyDraftExtra(parentId, replyToId) {
+    return replyToId ? parentId + "::to::" + replyToId : parentId;
+  }
+
+  /** 按回复树展开为带 depth 的有序列表（孤儿 replyToId 当作顶层） */
+  function flattenSweetRepliesTree(replies) {
+    var list = sortRepliesAsc(replies || []);
+    var byId = {};
+    list.forEach(function (r) {
+      if (r && r.id) byId[r.id] = r;
+    });
+    var children = {};
+    list.forEach(function (r) {
+      if (!r || !r.id) return;
+      var key =
+        r.replyToId && byId[r.replyToId] && r.replyToId !== r.id
+          ? r.replyToId
+          : "";
+      if (!children[key]) children[key] = [];
+      children[key].push(r);
+    });
+    var out = [];
+    function walk(parentKey, depth) {
+      (children[parentKey] || []).forEach(function (r) {
+        out.push({ reply: r, depth: depth });
+        walk(r.id, depth + 1);
+      });
+    }
+    walk("", 0);
+    return out;
+  }
+
   function renderSweetRepliesHtml(item) {
-    var replies = sortRepliesAsc(item.replies || []);
-    if (!replies.length) return "";
+    var flat = flattenSweetRepliesTree(item.replies || []);
+    if (!flat.length) return "";
     return (
       '<ul class="sweet-replies">' +
-      replies
-        .map(function (reply) {
+      flat
+        .map(function (row) {
+          var reply = row.reply;
+          var depth = Math.min(row.depth || 0, 4);
+          var target = reply.replyToId
+            ? findReplyById(item.replies, reply.replyToId)
+            : null;
+          var targetHint = "";
+          if (target) {
+            var snippet = (target.note || "").trim();
+            if (snippet.length > 28) snippet = snippet.slice(0, 28) + "…";
+            targetHint =
+              '<p class="sweet-reply-to">回复 ' +
+              escapeText(target.author || "对方") +
+              (snippet ? "：「" + escapeText(snippet) + "」" : "") +
+              "</p>";
+          }
           return (
-            '<li class="sweet-reply">' +
+            '<li class="sweet-reply' +
+            (depth ? " sweet-reply--nested" : "") +
+            '" style="--reply-depth:' +
+            depth +
+            '">' +
             '<div class="sweet-reply-top">' +
             '<p class="sweet-reply-meta">' +
             escapeText(
@@ -3017,6 +3096,11 @@ document.addEventListener("DOMContentLoaded", function () {
             ) +
             "</p>" +
             '<div class="sweet-reply-actions">' +
+            '<button type="button" class="btn-mini" data-reply-to-reply="' +
+            escapeText(reply.id) +
+            '" data-parent="' +
+            escapeText(item.id) +
+            '">回复</button>' +
             '<button type="button" class="btn-mini" data-edit-reply="' +
             escapeText(reply.id) +
             '" data-parent="' +
@@ -3029,6 +3113,7 @@ document.addEventListener("DOMContentLoaded", function () {
             '">删除</button>' +
             "</div>" +
             "</div>" +
+            targetHint +
             '<p class="sweet-reply-note">' +
             escapeText(reply.note || "") +
             "</p>" +
@@ -3190,40 +3275,49 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   var sweetReplyModal = document.getElementById("modal-sweet-reply");
-  var replyEditing = { parentId: "", replyId: "" };
+  var replyEditing = { parentId: "", replyId: "", replyToId: "" };
 
   function findReply(parent, replyId) {
-    var list = (parent && parent.replies) || [];
-    for (var i = 0; i < list.length; i++) {
-      if (list[i].id === replyId) return list[i];
-    }
-    return null;
+    return findReplyById((parent && parent.replies) || [], replyId);
   }
 
-  function openSweetReplyModal(parentId, reply) {
+  function openSweetReplyModal(parentId, reply, opts) {
+    opts = opts || {};
     var parent = findItem("sweets", parentId);
     if (!parent) return;
     if (!Array.isArray(parent.replies)) parent.replies = [];
+    var replyToId = "";
+    if (reply && reply.replyToId) replyToId = reply.replyToId;
+    else if (opts.replyToId) replyToId = opts.replyToId;
+    var replyTo = replyToId ? findReply(parent, replyToId) : null;
+    if (opts.replyToId && !replyTo) replyToId = "";
+
     replyEditing.parentId = parentId;
     replyEditing.replyId = reply ? reply.id : "";
-    setModalTitle(
-      "modal-sweet-reply-title",
-      reply ? "编辑回复" : "回复这条想说的话"
-    );
+    replyEditing.replyToId = replyToId;
+
+    var titleText = "回复这条想说的话";
+    if (reply) titleText = "编辑回复";
+    else if (replyTo) titleText = "回复这条回复";
+    setModalTitle("modal-sweet-reply-title", titleText);
+
     var form = document.getElementById("form-sweet-reply");
     form.reset();
     form.parentId.value = parentId;
     form.replyId.value = reply ? reply.id : "";
+    if (form.replyToId) form.replyToId.value = replyToId;
     applyAuthorLabels();
+
     var quote = document.getElementById("sweet-reply-quote");
     if (quote) {
-      var preview = (parent.note || "").trim();
+      var source = replyTo || parent;
+      var preview = ((source && source.note) || "").trim();
       if (preview.length > 60) preview = preview.slice(0, 60) + "…";
-      quote.textContent = preview
-        ? "回复「" + (parent.author ? parent.author + "：" : "") + preview + "」"
-        : "";
+      var who = source && source.author ? source.author + "：" : "";
+      quote.textContent = preview ? "回复「" + who + preview + "」" : "";
       quote.hidden = !preview;
     }
+
     if (reply) {
       form.date.value = reply.date || todayStr();
       form.note.value = reply.note || "";
@@ -3233,13 +3327,18 @@ document.addEventListener("DOMContentLoaded", function () {
       setVoiceFromAuthor(form, getMyNick());
     }
     syncVoiceToAuthor(form);
-    setActiveDraft("sweet-reply", replyEditing.replyId || null, parentId);
+
+    var draftExtra = reply
+      ? parentId
+      : sweetReplyDraftExtra(parentId, replyToId);
+    setActiveDraft("sweet-reply", replyEditing.replyId || null, draftExtra);
     restoreDraftToForm(
       "sweet-reply",
       replyEditing.replyId || null,
       form,
-      parentId
+      draftExtra
     );
+    if (form.replyToId) form.replyToId.value = replyToId;
     if (form.elements.author && form.elements.author.value) {
       setVoiceFromAuthor(form, form.elements.author.value);
     }
@@ -3252,18 +3351,22 @@ document.addEventListener("DOMContentLoaded", function () {
   function closeSweetReplyModal(opts) {
     opts = opts || {};
     var form = document.getElementById("form-sweet-reply");
+    var draftExtra = replyEditing.replyId
+      ? replyEditing.parentId
+      : sweetReplyDraftExtra(replyEditing.parentId, replyEditing.replyToId);
     if (!opts.skipDraftSave && form) {
       maybePersistDraftOnClose(
         "sweet-reply",
         replyEditing.replyId || null,
         form,
-        replyEditing.parentId
+        draftExtra
       );
     }
     if (sweetReplyModal) sweetReplyModal.hidden = true;
     if (form) form.reset();
     replyEditing.parentId = "";
     replyEditing.replyId = "";
+    replyEditing.replyToId = "";
     clearActiveDraft();
     setModalTitle("modal-sweet-reply-title", "回复");
     var quote = document.getElementById("sweet-reply-quote");
@@ -3385,13 +3488,20 @@ document.addEventListener("DOMContentLoaded", function () {
       var fd = new FormData(formSweetReply);
       var parentId = (fd.get("parentId") || replyEditing.parentId || "").toString();
       var replyId = (fd.get("replyId") || replyEditing.replyId || "").toString();
+      var replyToId = (
+        fd.get("replyToId") ||
+        replyEditing.replyToId ||
+        ""
+      ).toString();
       var parent = findItem("sweets", parentId);
       if (!parent) return;
       if (!Array.isArray(parent.replies)) parent.replies = [];
+      if (replyToId && !findReply(parent, replyToId)) replyToId = "";
       var payload = {
         author: (fd.get("author") || "").toString(),
         date: (fd.get("date") || "").toString(),
-        note: (fd.get("note") || "").toString().trim()
+        note: (fd.get("note") || "").toString().trim(),
+        replyToId: replyToId
       };
       if (!payload.note) return;
       if (replyId) {
@@ -3400,13 +3510,18 @@ document.addEventListener("DOMContentLoaded", function () {
         existing.author = payload.author;
         existing.date = payload.date;
         existing.note = payload.note;
+        // 编辑时保留原有 replyToId，不因表单误清空而打散楼层
+        if (!existing.replyToId && payload.replyToId) {
+          existing.replyToId = payload.replyToId;
+        }
         touchUpdatedAt(existing);
       } else {
         var reply = {
           id: uid(),
           author: payload.author,
           date: payload.date,
-          note: payload.note
+          note: payload.note,
+          replyToId: payload.replyToId || ""
         };
         touchUpdatedAt(reply);
         parent.replies.push(reply);
@@ -3419,7 +3534,9 @@ document.addEventListener("DOMContentLoaded", function () {
         draftSlot(
           "sweet-reply",
           replyId || null,
-          parentId
+          replyId
+            ? parentId
+            : sweetReplyDraftExtra(parentId, replyToId)
         )
       );
       closeSweetReplyModal({ skipDraftSave: true });
@@ -4179,6 +4296,14 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
+    var replyToReplyBtn = e.target.closest("[data-reply-to-reply]");
+    if (replyToReplyBtn) {
+      openSweetReplyModal(replyToReplyBtn.getAttribute("data-parent"), null, {
+        replyToId: replyToReplyBtn.getAttribute("data-reply-to-reply")
+      });
+      return;
+    }
+
     var editReplyBtn = e.target.closest("[data-edit-reply]");
     if (editReplyBtn) {
       var parentForEdit = findItem("sweets", editReplyBtn.getAttribute("data-parent"));
@@ -4198,10 +4323,18 @@ document.addEventListener("DOMContentLoaded", function () {
       var replyIdDel = delReplyBtn.getAttribute("data-delete-reply");
       var parentDel = findItem("sweets", parentIdDel);
       if (!parentDel) return;
-      if (!confirm("确定删除这条回复吗？")) return;
-      markDeleted(replyIdDel);
+      var subtree = collectReplySubtreeIds(parentDel.replies || [], replyIdDel);
+      var childCount = Object.keys(subtree).length - 1;
+      var delMsg =
+        childCount > 0
+          ? "确定删除这条回复吗？其下 " + childCount + " 条再回复也会一起删除。"
+          : "确定删除这条回复吗？";
+      if (!confirm(delMsg)) return;
+      Object.keys(subtree).forEach(function (id) {
+        markDeleted(id);
+      });
       parentDel.replies = (parentDel.replies || []).filter(function (r) {
-        return r.id !== replyIdDel;
+        return !subtree[r.id];
       });
       touchUpdatedAt(parentDel);
       saveData();
