@@ -338,29 +338,58 @@ document.addEventListener("DOMContentLoaded", function () {
     el.classList.toggle("ok", !!ok);
   }
 
+  function openSettings() {
+    var sheet = document.getElementById("settings-sheet");
+    if (sheet) sheet.hidden = false;
+    renderPairPanel();
+  }
+
+  function closeSettings() {
+    var sheet = document.getElementById("settings-sheet");
+    if (sheet) sheet.hidden = true;
+  }
+
+  function setSettingsAuthError(msg) {
+    var el = document.getElementById("settings-auth-error");
+    if (!el) return;
+    if (!msg) {
+      el.hidden = true;
+      el.textContent = "";
+      return;
+    }
+    el.hidden = false;
+    el.textContent = msg;
+  }
+
   function renderPairPanel() {
     var panel = document.getElementById("pair-panel");
-    var userBar = document.getElementById("cloud-user-bar");
+    var loggedIn = document.getElementById("settings-account-logged-in");
+    var guest = document.getElementById("settings-account-guest");
     var note = document.getElementById("privacy-note");
+    var settingsBtn = document.getElementById("btn-open-settings");
+
+    if (settingsBtn && !document.body.classList.contains("is-locked")) {
+      settingsBtn.hidden = false;
+    }
+
     if (!window.XinbaoCloud || !XinbaoCloud.configured()) {
       if (panel) panel.hidden = true;
-      if (userBar) userBar.hidden = true;
+      if (loggedIn) loggedIn.hidden = true;
+      if (guest) guest.hidden = false;
       return;
     }
 
     var user = XinbaoCloud.getUser();
     var pair = XinbaoCloud.getPair();
-    if (userBar) {
-      if (user) {
-        userBar.hidden = false;
-        var label = document.getElementById("cloud-user-label");
-        if (label) label.textContent = "已登录：" + (user.email || "");
-      } else {
-        userBar.hidden = true;
-      }
-    }
 
-    if (!user) {
+    if (user) {
+      if (loggedIn) loggedIn.hidden = false;
+      if (guest) guest.hidden = true;
+      var label = document.getElementById("cloud-user-label");
+      if (label) label.textContent = "已登录：" + (user.email || "");
+    } else {
+      if (loggedIn) loggedIn.hidden = true;
+      if (guest) guest.hidden = false;
       if (panel) panel.hidden = true;
       if (note) note.textContent = "私密本机站 · 点板块进入独立页面";
       return;
@@ -376,14 +405,14 @@ document.addEventListener("DOMContentLoaded", function () {
     if (ready) ready.hidden = true;
 
     if (!pair) {
-      if (status) status.textContent = "还没有二人空间。创建后生成邀请码，或输入对方邀请码加入。";
+      if (status) status.textContent = "还没有房间。创建后生成邀请码，或输入对方邀请码加入。";
       if (actions) actions.hidden = false;
       if (note) note.textContent = "已登录云端 · 配对后即可双向同步";
       return;
     }
 
     if (!pair.partner_id) {
-      if (status) status.textContent = "二人空间已创建，等待另一半加入。";
+      if (status) status.textContent = "房间已创建，等待另一半加入。";
       var codeEl = document.getElementById("pair-invite-code");
       if (codeEl) codeEl.textContent = pair.invite_code;
       if (waiting) waiting.hidden = false;
@@ -426,6 +455,77 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function wirePairControls() {
+    var openBtn = document.getElementById("btn-open-settings");
+    if (openBtn) {
+      openBtn.addEventListener("click", openSettings);
+    }
+    document.body.addEventListener("click", function (e) {
+      if (e.target.closest("[data-close-settings]")) closeSettings();
+    });
+
+    var settingsForm = document.getElementById("settings-auth-form");
+    if (settingsForm) {
+      settingsForm.addEventListener("submit", function (e) {
+        e.preventDefault();
+        setSettingsAuthError("");
+        var email = document.getElementById("settings-email").value.trim();
+        var password = document.getElementById("settings-password").value;
+        XinbaoCloud.signIn(email, password)
+          .then(function () {
+            return XinbaoCloud.loadPair();
+          })
+          .then(function () {
+            renderPairPanel();
+            showToast("已登录");
+            if (XinbaoCloud.canSync()) {
+              return XinbaoCloud.pullJournal().then(function (payload) {
+                if (payload) {
+                  var merged = applyRecoveredSweets(
+                    mergeJournalPayload(loadData(), payload)
+                  );
+                  localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+                  data = loadData();
+                  reindexOrders(data.anniversaries);
+                  renderAll();
+                }
+                return XinbaoCloud.pushJournal(data);
+              });
+            }
+          })
+          .catch(function (err) {
+            setSettingsAuthError(
+              (err && err.message) ||
+                (XinbaoCloud.friendlyAuthError && XinbaoCloud.friendlyAuthError(err)) ||
+                "登录失败"
+            );
+          });
+      });
+    }
+
+    var settingsSignup = document.getElementById("settings-signup-btn");
+    if (settingsSignup) {
+      settingsSignup.addEventListener("click", function () {
+        setSettingsAuthError("");
+        var email = document.getElementById("settings-email").value.trim();
+        var password = document.getElementById("settings-password").value;
+        XinbaoCloud.signUp(email, password)
+          .then(function () {
+            return XinbaoCloud.signIn(email, password);
+          })
+          .then(function () {
+            return XinbaoCloud.loadPair();
+          })
+          .then(function () {
+            setSettingsAuthError("");
+            renderPairPanel();
+            showToast("注册并登录成功");
+          })
+          .catch(function (err) {
+            setSettingsAuthError((err && err.message) || "注册失败");
+          });
+      });
+    }
+
     var createBtn = document.getElementById("btn-create-pair");
     if (createBtn) {
       createBtn.addEventListener("click", function () {

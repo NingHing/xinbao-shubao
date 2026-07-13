@@ -4,9 +4,79 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>馨宝与树宝</title>
-  <link rel="stylesheet" href="styles.css?v=sync-status" />
+  <link rel="stylesheet" href="styles.css?v=settings-sheet" />
 </head>
 <body class="is-locked" data-view="home">
+  <!-- App 顶栏：设置入口（解锁后显示） -->
+  <button type="button" id="btn-open-settings" class="app-settings-btn" aria-label="打开设置" hidden>
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 2.5v2.2M12 19.3v2.2M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6" stroke-linecap="round" />
+    </svg>
+  </button>
+
+  <!-- 设置抽屉：账户 + 二人空间 -->
+  <div id="settings-sheet" class="settings-sheet" hidden>
+    <div class="settings-backdrop" data-close-settings></div>
+    <aside class="settings-panel" role="dialog" aria-labelledby="settings-title" aria-modal="true">
+      <header class="settings-head">
+        <h2 id="settings-title" class="settings-title">设置</h2>
+        <button type="button" class="settings-close" data-close-settings aria-label="关闭">×</button>
+      </header>
+
+      <section class="settings-section" aria-labelledby="settings-account-heading">
+        <h3 id="settings-account-heading" class="settings-section-title">账户</h3>
+        <div id="settings-account-logged-in" hidden>
+          <p id="cloud-user-label" class="settings-account-email"></p>
+          <button type="button" class="btn btn-ghost" id="btn-cloud-logout">退出登录</button>
+        </div>
+        <div id="settings-account-guest">
+          <p class="settings-hint">登录后可与另一半同步同一本日记</p>
+          <form id="settings-auth-form" class="settings-form" autocomplete="on">
+            <label class="settings-label" for="settings-email">邮箱</label>
+            <input id="settings-email" class="settings-input" type="email" required placeholder="you@example.com" />
+            <label class="settings-label" for="settings-password">密码</label>
+            <input id="settings-password" class="settings-input" type="password" required minlength="6" placeholder="至少 6 位" />
+            <p id="settings-auth-error" class="settings-error" hidden></p>
+            <div class="settings-actions">
+              <button type="submit" class="btn" id="settings-login-btn">登入账号</button>
+              <button type="button" class="btn btn-ghost" id="settings-signup-btn">注册</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section id="pair-panel" class="settings-section" aria-labelledby="settings-pair-heading" hidden>
+        <h3 id="settings-pair-heading" class="settings-section-title">二人云端本</h3>
+        <p id="pair-status" class="pair-status">正在读取配对状态…</p>
+        <p id="pair-msg" class="pair-msg" hidden></p>
+        <div id="pair-actions" class="pair-actions" hidden>
+          <button type="button" class="btn" id="btn-create-pair">创建房间</button>
+          <form id="join-pair-form" class="pair-join">
+            <input id="join-pair-code" type="text" maxlength="8" placeholder="输入邀请码" autocomplete="off" />
+            <button type="submit" class="btn btn-ghost">加入房间</button>
+          </form>
+        </div>
+        <div id="pair-waiting" class="pair-banner" hidden>
+          <p>邀请码（发给另一半）：</p>
+          <p class="pair-code" id="pair-invite-code">------</p>
+          <div class="pair-btn-row">
+            <button type="button" class="btn btn-ghost btn-mini-bar" id="btn-refresh-pair">对方加入后点这里刷新</button>
+            <button type="button" class="btn btn-ghost btn-mini-bar" id="btn-leave-pair-waiting">取消房间</button>
+          </div>
+        </div>
+        <div id="pair-ready" class="pair-banner is-ready" hidden>
+          <p>已连接。你们正在同步同一本日记。</p>
+          <p id="sync-status" class="sync-status" aria-live="polite">同步状态：待命</p>
+          <div class="pair-btn-row">
+            <button type="button" class="btn btn-ghost btn-mini-bar" id="btn-sync-now">立即同步</button>
+            <button type="button" class="btn btn-ghost btn-mini-bar" id="btn-leave-pair-ready">退出房间</button>
+          </div>
+        </div>
+      </section>
+    </aside>
+  </div>
+
   <!-- ========== 门禁：云端登录（有配置时）或本地暗号 ========== -->
   <div id="gate" class="gate" role="dialog" aria-labelledby="gate-title" aria-modal="true">
     <div class="gate-card">
@@ -59,43 +129,7 @@
       <p class="hero-sub">从 2025.12.4 开始的故事</p>
       <p class="hero-days">在一起第 <span id="days-together">0</span> 天</p>
       <p class="privacy-note" id="privacy-note">私密本机站 · 点板块进入独立页面</p>
-      <div id="cloud-user-bar" class="cloud-user-bar" hidden>
-        <span id="cloud-user-label"></span>
-        <button type="button" class="btn btn-ghost btn-mini-bar" id="btn-cloud-logout">退出登录</button>
-      </div>
     </header>
-
-    <section id="pair-panel" class="home-pair" aria-label="二人云端同步" hidden>
-      <div class="pair-head">
-        <p class="pair-kicker">CLOUD PAIR</p>
-        <h2 class="pair-title">二人云端本</h2>
-      </div>
-      <p id="pair-status" class="pair-status">正在读取配对状态…</p>
-      <p id="pair-msg" class="pair-msg" hidden></p>
-      <div id="pair-actions" class="pair-actions" hidden>
-        <button type="button" class="btn" id="btn-create-pair">创建二人空间</button>
-        <form id="join-pair-form" class="pair-join">
-          <input id="join-pair-code" type="text" maxlength="8" placeholder="输入邀请码" autocomplete="off" />
-          <button type="submit" class="btn btn-ghost">加入</button>
-        </form>
-      </div>
-      <div id="pair-waiting" class="pair-banner" hidden>
-        <p>邀请码（发给另一半）：</p>
-        <p class="pair-code" id="pair-invite-code">------</p>
-        <div class="pair-btn-row">
-          <button type="button" class="btn btn-ghost btn-mini-bar" id="btn-refresh-pair">对方加入后点这里刷新</button>
-          <button type="button" class="btn btn-ghost btn-mini-bar" id="btn-leave-pair-waiting">取消二人空间</button>
-        </div>
-      </div>
-      <div id="pair-ready" class="pair-banner is-ready" hidden>
-        <p>已连接。你们正在同步同一本日记（改动会上传云端）。</p>
-        <p id="sync-status" class="sync-status" aria-live="polite">同步状态：待命</p>
-        <div class="pair-btn-row">
-          <button type="button" class="btn btn-ghost btn-mini-bar" id="btn-sync-now">立即同步</button>
-          <button type="button" class="btn btn-ghost btn-mini-bar" id="btn-leave-pair-ready">退出二人空间</button>
-        </div>
-      </div>
-    </section>
 
     <section class="home-reminders" aria-label="纪念日提醒">
       <div class="reminders-head">
@@ -402,6 +436,8 @@
           gate.hidden = true;
           gate.style.display = "none";
         }
+        var settingsBtn = document.getElementById("btn-open-settings");
+        if (settingsBtn) settingsBtn.hidden = false;
         document.dispatchEvent(new Event("site-unlocked"));
       }
 
@@ -528,6 +564,6 @@
     })();
   </script>
   <script src="seed-data.js?v=20260713-recover-sweets"></script>
-  <script src="script.js?v=remind-updatedAt"></script>
+  <script src="script.js?v=settings-sheet"></script>
 </body>
 </html>

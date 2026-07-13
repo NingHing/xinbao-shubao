@@ -187,15 +187,145 @@ body.is-locked .gate {
   color: var(--muted);
 }
 
-.cloud-user-bar {
-  margin-top: 0.75rem;
-  display: flex;
-  justify-content: center;
+/* ----- App 设置按钮 / 抽屉 ----- */
+.app-settings-btn {
+  position: fixed;
+  top: max(0.75rem, env(safe-area-inset-top));
+  right: max(0.75rem, env(safe-area-inset-right));
+  z-index: 40;
+  width: 2.6rem;
+  height: 2.6rem;
+  border: 1px solid rgba(217, 123, 146, 0.35);
+  border-radius: 50%;
+  background: rgba(255, 252, 253, 0.92);
+  color: var(--rose-deep);
+  display: inline-flex;
   align-items: center;
-  gap: 0.6rem;
-  flex-wrap: wrap;
-  font-size: 0.82rem;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(80, 40, 55, 0.08);
+  transition: transform 0.18s ease, background 0.18s ease;
+}
+
+.app-settings-btn:active {
+  transform: scale(0.96);
+}
+
+body.is-locked .app-settings-btn {
+  display: none !important;
+}
+
+.settings-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.settings-sheet[hidden] {
+  display: none !important;
+}
+
+.settings-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(40, 24, 30, 0.35);
+}
+
+.settings-panel {
+  position: relative;
+  width: min(22rem, 92vw);
+  height: 100%;
+  overflow: auto;
+  background: #fffafb;
+  border-left: 1px solid rgba(217, 123, 146, 0.22);
+  padding: 1.1rem 1rem 2rem;
+  box-shadow: -12px 0 36px rgba(60, 30, 40, 0.12);
+  animation: settings-slide-in 0.22s ease;
+}
+
+@keyframes settings-slide-in {
+  from { transform: translateX(12%); opacity: 0.6; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.settings-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.settings-title {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: var(--rose-deep);
+  letter-spacing: 0.08em;
+}
+
+.settings-close {
+  border: none;
+  background: transparent;
+  font-size: 1.6rem;
+  line-height: 1;
   color: var(--muted);
+  cursor: pointer;
+  padding: 0.2rem 0.45rem;
+}
+
+.settings-section {
+  margin-bottom: 1.25rem;
+  padding: 0.9rem 0.85rem 1rem;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(217, 123, 146, 0.18);
+  border-radius: 14px;
+}
+
+.settings-section-title {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 0.55rem;
+}
+
+.settings-hint,
+.settings-account-email {
+  font-size: 0.84rem;
+  color: var(--muted);
+  line-height: 1.5;
+  margin-bottom: 0.65rem;
+}
+
+.settings-form {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.settings-label {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.settings-input {
+  border: 1px solid rgba(217, 123, 146, 0.28);
+  border-radius: 10px;
+  padding: 0.55rem 0.75rem;
+  font: inherit;
+  background: #fff;
+}
+
+.settings-error {
+  color: #a33b2b;
+  font-size: 0.82rem;
+}
+
+.settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.35rem;
 }
 
 .btn-mini-bar {
@@ -233,7 +363,7 @@ body.is-locked .gate {
 }
 
 .pair-status {
-  text-align: center;
+  text-align: left;
   color: var(--muted);
   font-size: 0.86rem;
   line-height: 1.55;
@@ -241,7 +371,7 @@ body.is-locked .gate {
 }
 
 .pair-msg {
-  text-align: center;
+  text-align: left;
   color: #a33b2b;
   font-size: 0.84rem;
   margin: 0 0 0.45rem;
@@ -254,14 +384,13 @@ body.is-locked .gate {
 .pair-actions {
   display: grid;
   gap: 0.65rem;
-  justify-items: center;
+  justify-items: stretch;
 }
 
 .pair-join {
   display: flex;
   gap: 0.45rem;
   flex-wrap: wrap;
-  justify-content: center;
   width: 100%;
 }
 
@@ -270,14 +399,15 @@ body.is-locked .gate {
   border-radius: 999px;
   padding: 0.55rem 0.85rem;
   font: inherit;
-  min-width: 9rem;
+  min-width: 0;
+  flex: 1;
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
 .pair-banner {
   margin-top: 0.55rem;
-  text-align: center;
+  text-align: left;
   padding: 0.75rem 0.8rem;
   border-radius: 14px;
   background: rgba(248, 238, 242, 0.9);
@@ -295,6 +425,7 @@ body.is-locked .gate {
   letter-spacing: 0.28em;
   font-weight: 700;
   color: var(--rose-deep);
+  text-align: center;
 }
 
 .pair-btn-row {
