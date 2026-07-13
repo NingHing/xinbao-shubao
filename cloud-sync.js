@@ -140,6 +140,7 @@ window.XinbaoCloud = (function () {
   }
 
   var lastRemoteUpdatedAt = "";
+  var journalChannel = null;
 
   function pullJournal() {
     var c = ensureClient();
@@ -166,7 +167,8 @@ window.XinbaoCloud = (function () {
    * 先只问云端「有没有更新」；没有变化就不拉整本，省流量也更快。
    * 返回：{ kind: "unchanged"|"empty"|"payload", payload?, updatedAt? }
    */
-  function pullJournalIfNewer() {
+  function pullJournalIfNewer(options) {
+    options = options || {};
     var c = ensureClient();
     if (!canSync()) {
       return Promise.resolve({ kind: "empty" });
@@ -185,7 +187,7 @@ window.XinbaoCloud = (function () {
         }
         journalId = res.data.id;
         var at = res.data.updated_at || "";
-        if (at && at === lastRemoteUpdatedAt) {
+        if (!options.force && at && at === lastRemoteUpdatedAt) {
           return { kind: "unchanged", updatedAt: at };
         }
         return pullJournal().then(function (payload) {
@@ -196,6 +198,56 @@ window.XinbaoCloud = (function () {
           };
         });
       });
+  }
+
+  function stopJournalRealtime() {
+    var c = ensureClient();
+    if (journalChannel && c) {
+      try {
+        c.removeChannel(journalChannel);
+      } catch (err) {}
+    }
+    journalChannel = null;
+  }
+
+  /**
+   * 订阅 journals 变更（对方一保存，手机也能马上收到）。
+   * 需在 Supabase 打开 Realtime（见 schema-journals-realtime.sql）。
+   */
+  function startJournalRealtime(onChange) {
+    stopJournalRealtime();
+    var c = ensureClient();
+    if (!c || !canSync() || !pair || !pair.id) return false;
+    if (typeof onChange !== "function") return false;
+
+    journalChannel = c
+      .channel("journals-live-" + pair.id)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "journals",
+          filter: "pair_id=eq." + pair.id
+        },
+        function (payload) {
+          try {
+            var row = (payload && payload.new) || {};
+            var at = row.updated_at || "";
+            // 自己刚推上去的回声：时间戳一样就忽略
+            if (at && at === lastRemoteUpdatedAt) return;
+            if (typeof onChange === "function") onChange(payload);
+          } catch (err) {
+            console.warn("realtime 回调失败", err);
+          }
+        }
+      )
+      .subscribe(function (status) {
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.warn("journals realtime 状态", status);
+        }
+      });
+    return true;
   }
 
   function friendlySyncError(err) {
@@ -562,6 +614,8 @@ window.XinbaoCloud = (function () {
     loadPair: loadPair,
     pullJournal: pullJournal,
     pullJournalIfNewer: pullJournalIfNewer,
+    startJournalRealtime: startJournalRealtime,
+    stopJournalRealtime: stopJournalRealtime,
     pushJournal: pushJournal,
     queuePush: queuePush,
     uploadPlacePhoto: uploadPlacePhoto,

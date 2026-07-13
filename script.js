@@ -4031,28 +4031,74 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
-  // ----- 前台轻量自动同步：对方改了大约十几秒内能看到，不必每次手动刷新 -----
+  // ----- 前台自动同步：Realtime 优先 + 手机友好轮询/唤醒 -----
   var liveSyncTimer = null;
   var quietPullRunning = false;
-  var LIVE_SYNC_MS = 12000;
+  var lastQuietPullAt = 0;
+  var mergePushWatchdog = null;
 
-  function stopLiveSync() {
-    if (liveSyncTimer) {
-      clearInterval(liveSyncTimer);
-      liveSyncTimer = null;
+  function isMobileLike() {
+    try {
+      return (
+        window.matchMedia("(max-width: 820px)").matches ||
+        /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || "")
+      );
+    } catch (err) {
+      return false;
     }
   }
 
-  function runQuietPull() {
+  function liveSyncIntervalMs() {
+    // 手机浏览器会拖慢定时器，间隔短一点更稳
+    return isMobileLike() ? 5000 : 10000;
+  }
+
+  function stopLiveSync() {
+    if (liveSyncTimer) {
+      clearTimeout(liveSyncTimer);
+      liveSyncTimer = null;
+    }
+    if (window.XinbaoCloud && typeof XinbaoCloud.stopJournalRealtime === "function") {
+      try {
+        XinbaoCloud.stopJournalRealtime();
+      } catch (err) {}
+    }
+  }
+
+  function scheduleNextLiveSync() {
+    if (liveSyncTimer) clearTimeout(liveSyncTimer);
+    liveSyncTimer = setTimeout(function () {
+      liveSyncTimer = null;
+      runQuietPull().then(
+        function () {
+          if (document.visibilityState === "visible") scheduleNextLiveSync();
+        },
+        function () {
+          if (document.visibilityState === "visible") scheduleNextLiveSync();
+        }
+      );
+    }, liveSyncIntervalMs());
+  }
+
+  function runQuietPull(options) {
+    options = options || {};
     if (!appStarted) return Promise.resolve(false);
-    if (document.visibilityState !== "visible") return Promise.resolve(false);
+    if (!options.ignoreVisibility && document.visibilityState !== "visible") {
+      return Promise.resolve(false);
+    }
     if (!window.XinbaoCloud || !XinbaoCloud.canSync()) return Promise.resolve(false);
     if (typeof XinbaoCloud.pullJournalIfNewer !== "function") {
       return Promise.resolve(false);
     }
-    if (mergePushRunning || quietPullRunning) return Promise.resolve(false);
+    // 不再被 mergePushRunning 永久挡住（手机上压图/上传慢时以前会卡死自动同步）
+    if (quietPullRunning) return Promise.resolve(false);
+    var now = Date.now();
+    if (!options.force && now - lastQuietPullAt < 1200) {
+      return Promise.resolve(false);
+    }
     quietPullRunning = true;
-    return XinbaoCloud.pullJournalIfNewer()
+    lastQuietPullAt = now;
+    return XinbaoCloud.pullJournalIfNewer({ force: !!options.force })
       .then(function (result) {
         if (!result || result.kind !== "payload") return false;
         var localSnapshot = JSON.parse(JSON.stringify(data || loadData()));
@@ -4096,10 +4142,22 @@ document.addEventListener("DOMContentLoaded", function () {
   function startLiveSync() {
     stopLiveSync();
     if (!window.XinbaoCloud || !XinbaoCloud.canSync()) return;
-    liveSyncTimer = setInterval(function () {
-      runQuietPull();
-    }, LIVE_SYNC_MS);
-    runQuietPull();
+
+    if (typeof XinbaoCloud.startJournalRealtime === "function") {
+      XinbaoCloud.startJournalRealtime(function () {
+        // 对方一改库，立刻强制拉（不依赖手机定时器）
+        runQuietPull({ force: true, ignoreVisibility: false });
+      });
+    }
+
+    scheduleNextLiveSync();
+    runQuietPull({ force: true });
+  }
+
+  function wakeLiveSync() {
+    if (!appStarted) return;
+    if (!window.XinbaoCloud || !XinbaoCloud.canSync()) return;
+    runQuietPull({ force: false });
   }
 
   var _bootWithDataOrig = bootWithData;
@@ -4110,10 +4168,22 @@ document.addEventListener("DOMContentLoaded", function () {
     } catch (err) {}
   };
 
+  // mergePush 看门狗：手机上传卡住时别一直占着同步锁
+  var _runMergePushOrig = runMergePush;
+  runMergePush = function () {
+    if (mergePushWatchdog) clearTimeout(mergePushWatchdog);
+    mergePushWatchdog = setTimeout(function () {
+      if (mergePushRunning) {
+        console.warn("同步超时，解除锁定以便继续自动拉取");
+        mergePushRunning = false;
+      }
+    }, 45000);
+    _runMergePushOrig();
+  };
+
   startApp();
   document.addEventListener("site-unlocked", startApp);
 
-  // 切回页面时完整合并推送；并（重新）打开前台轻量同步
   document.addEventListener("visibilitychange", function () {
     if (document.visibilityState !== "visible") return;
     if (!appStarted) return;
@@ -4121,4 +4191,25 @@ document.addEventListener("DOMContentLoaded", function () {
     queueMergePush({ immediate: true });
     startLiveSync();
   });
+
+  window.addEventListener("focus", function () {
+    wakeLiveSync();
+  });
+  window.addEventListener("pageshow", function () {
+    wakeLiveSync();
+    if (window.XinbaoCloud && XinbaoCloud.canSync()) startLiveSync();
+  });
+  window.addEventListener("online", function () {
+    wakeLiveSync();
+  });
+
+  // 手机上点一下屏幕也顺手检查同步（有节流）
+  document.addEventListener(
+    "touchstart",
+    function () {
+      if (!isMobileLike()) return;
+      wakeLiveSync();
+    },
+    { passive: true }
+  );
 });
