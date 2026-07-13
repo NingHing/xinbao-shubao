@@ -665,51 +665,6 @@ document.addEventListener("DOMContentLoaded", function () {
   var ACTIVITY_PREVIEW_LIMIT = 2;
   var ACTIVITY_MAX_ITEMS = 8;
   var activityListExpanded = false;
-  var activitySectionOpen = false;
-  var remindersSectionOpen = false;
-
-  function isCompactHome() {
-    return window.matchMedia && window.matchMedia("(max-width: 640px)").matches;
-  }
-
-  function syncHomeSectionUi() {
-    var act = document.getElementById("home-activity");
-    var rem = document.getElementById("home-reminders");
-    var actBtn = document.getElementById("activity-summary");
-    var remBtn = document.getElementById("reminders-summary");
-    if (act) act.classList.toggle("is-open", !!activitySectionOpen);
-    if (rem) rem.classList.toggle("is-open", !!remindersSectionOpen);
-    if (actBtn) actBtn.setAttribute("aria-expanded", activitySectionOpen ? "true" : "false");
-    if (remBtn) remBtn.setAttribute("aria-expanded", remindersSectionOpen ? "true" : "false");
-  }
-
-  function setActivitySummary(count) {
-    var meta = document.getElementById("activity-summary-meta");
-    if (!meta) return;
-    if (activitySectionOpen) {
-      meta.textContent = "收起";
-    } else if (count > 0) {
-      meta.textContent = count + " 条 · 点开看";
-    } else {
-      meta.textContent = "暂无";
-    }
-  }
-
-  function setRemindersSummary(count, firstLabel) {
-    var meta = document.getElementById("reminders-summary-meta");
-    if (!meta) return;
-    if (remindersSectionOpen) {
-      meta.textContent = "收起";
-    } else if (count > 0) {
-      meta.textContent =
-        count +
-        " 件" +
-        (firstLabel ? " · " + truncateText(firstLabel, 10) : "") +
-        " · 点开看";
-    } else {
-      meta.textContent = "暂无临近日子";
-    }
-  }
 
   function renderActivity() {
     if (!data) return;
@@ -744,16 +699,10 @@ document.addEventListener("DOMContentLoaded", function () {
       section.hidden = true;
       listEl.innerHTML = "";
       activityListExpanded = false;
-      activitySectionOpen = false;
-      setActivitySummary(0);
-      syncHomeSectionUi();
       return;
     }
 
     section.hidden = false;
-    setActivitySummary(unread.length);
-    syncHomeSectionUi();
-
     var items = unread.slice(0, ACTIVITY_MAX_ITEMS);
     if (items.length <= ACTIVITY_PREVIEW_LIMIT) {
       activityListExpanded = false;
@@ -791,7 +740,7 @@ document.addEventListener("DOMContentLoaded", function () {
       if (activityListExpanded) {
         html +=
           '<li class="activity-toggle-row">' +
-          '<button type="button" class="activity-toggle" data-activity-toggle="collapse">收起列表</button>' +
+          '<button type="button" class="activity-toggle" data-activity-toggle="collapse">收起</button>' +
           "</li>";
       } else {
         html +=
@@ -2112,33 +2061,12 @@ document.addEventListener("DOMContentLoaded", function () {
     markAllSeenBtn.addEventListener("click", function () {
       markAllModulesSeen();
       activityListExpanded = false;
-      activitySectionOpen = false;
       renderActivity();
       showToast("已全部标为已读");
     });
   }
 
   document.body.addEventListener("click", function (e) {
-    var sectionBtn =
-      e.target && e.target.closest
-        ? e.target.closest("[data-home-section-toggle]")
-        : null;
-    if (sectionBtn) {
-      var sectionName = sectionBtn.getAttribute("data-home-section-toggle");
-      if (sectionName === "activity") {
-        activitySectionOpen = !activitySectionOpen;
-        if (!activitySectionOpen) activityListExpanded = false;
-        setActivitySummary(
-          collectUnreadActivities().length
-        );
-        syncHomeSectionUi();
-      } else if (sectionName === "reminders") {
-        remindersSectionOpen = !remindersSectionOpen;
-        renderReminders();
-      }
-      return;
-    }
-
     var toggleBtn = e.target && e.target.closest
       ? e.target.closest("[data-activity-toggle]")
       : null;
@@ -2146,30 +2074,6 @@ document.addEventListener("DOMContentLoaded", function () {
     var mode = toggleBtn.getAttribute("data-activity-toggle");
     activityListExpanded = mode === "expand";
     renderActivity();
-  });
-
-  // 桌面默认展开摘要区；手机保持折叠，首屏更短
-  var homeWasCompact = isCompactHome();
-  if (!homeWasCompact) {
-    activitySectionOpen = true;
-    remindersSectionOpen = true;
-  }
-  syncHomeSectionUi();
-  window.addEventListener("resize", function () {
-    var nowCompact = isCompactHome();
-    if (nowCompact === homeWasCompact) return;
-    homeWasCompact = nowCompact;
-    if (nowCompact) {
-      activitySectionOpen = false;
-      remindersSectionOpen = false;
-      activityListExpanded = false;
-    } else {
-      activitySectionOpen = true;
-      remindersSectionOpen = true;
-    }
-    syncHomeSectionUi();
-    renderActivity();
-    renderReminders();
   });
 
   function uid() {
@@ -2289,34 +2193,17 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function renderReminders() {
-    var section = document.getElementById("home-reminders");
     var listEl = document.getElementById("list-reminders");
     if (!listEl) return;
-    var upcoming = getUpcomingReminders();
-    var compact = isCompactHome();
+    var upcoming = getUpcomingReminders().slice(0, 4);
 
     if (!upcoming.length) {
-      setRemindersSummary(0);
-      if (section) {
-        if (compact) {
-          section.hidden = true;
-        } else {
-          section.hidden = false;
-          listEl.innerHTML =
-            '<li class="reminder-empty">在「纪念日」里把生日、周年设为「每年庆祝」，就会出现在这里倒数。<br />像「搬进小家」这种只想留念的，选「只记天数」即可。</li>';
-        }
-      }
-      remindersSectionOpen = false;
-      syncHomeSectionUi();
+      listEl.innerHTML =
+        '<li class="reminder-empty">在「纪念日」里把生日、周年设为「每年庆祝」，就会出现在这里倒数。<br />像「搬进小家」这种只想留念的，选「只记天数」即可。</li>';
       return;
     }
 
-    if (section) section.hidden = false;
-    var preview = upcoming.slice(0, remindersSectionOpen ? 4 : 2);
-    setRemindersSummary(upcoming.length, upcoming[0] && upcoming[0].title);
-    syncHomeSectionUi();
-
-    listEl.innerHTML = preview
+    listEl.innerHTML = upcoming
       .map(function (row) {
         var urgency =
           row.daysLeft === 0 ? " is-today" : row.daysLeft <= 7 ? " is-soon" : "";
