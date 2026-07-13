@@ -54,29 +54,59 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   ];
 
-  /** 按 id 合并两份列表：两边都有的条目以 newer 为准，只在一边的保留 */
-  function mergeById(localArr, remoteArr) {
+  /** 按 id 合并：有更新时间的取较新；都没有时取后写入的那份（调用时让「想保留的」放后面） */
+  function mergeById(primaryArr, preferredArr) {
     var map = {};
-    (localArr || []).forEach(function (item) {
-      if (item && item.id) map[item.id] = item;
+
+    function stamp(item) {
+      if (!item || !item.updatedAt) return 0;
+      var t = Date.parse(item.updatedAt);
+      return isNaN(t) ? 0 : t;
+    }
+
+    function consider(item, preferIfTie) {
+      if (!item || !item.id) return;
+      var prev = map[item.id];
+      if (!prev) {
+        map[item.id] = item;
+        return;
+      }
+      var tNew = stamp(item);
+      var tOld = stamp(prev);
+      if (tNew > tOld) {
+        map[item.id] = item;
+      } else if (tNew === tOld && preferIfTie) {
+        map[item.id] = item;
+      }
+    }
+
+    (primaryArr || []).forEach(function (item) {
+      consider(item, false);
     });
-    (remoteArr || []).forEach(function (item) {
-      if (item && item.id) map[item.id] = item;
+    (preferredArr || []).forEach(function (item) {
+      consider(item, true);
     });
     return Object.keys(map).map(function (id) {
       return map[id];
     });
   }
 
-  /** 云端拉取后与本机合并：两边独有的都保留；同一 id 以本机为准（刚编辑的不会被旧云端盖掉） */
+  /** 云端与本机合并：两边独有的都留；同一 id 以 updatedAt 较新为准 */
   function mergeJournalPayload(localData, remotePayload) {
     var local = localData || JSON.parse(JSON.stringify(defaultData));
     var remote = remotePayload || {};
     var out = {};
     Object.keys(defaultData).forEach(function (key) {
+      // remote 先入，local 后入：时间相同或都无时间时，保留本机刚改的
       out[key] = mergeById(remote[key], local[key]);
     });
     return out;
+  }
+
+  function touchUpdatedAt(item) {
+    if (!item) return item;
+    item.updatedAt = new Date().toISOString();
+    return item;
   }
 
   function applyRecoveredSweets(target) {
@@ -140,7 +170,8 @@ document.addEventListener("DOMContentLoaded", function () {
         pinned: !!item.pinned,
         // 只有明确设为 true 才进入提醒栏（记录 ≠ 提醒）
         remind: item.remind === true,
-        order: typeof item.order === "number" ? item.order : index
+        order: typeof item.order === "number" ? item.order : index,
+        updatedAt: item.updatedAt || ""
       };
     });
   }
@@ -185,7 +216,8 @@ document.addEventListener("DOMContentLoaded", function () {
           dateEnd: end,
           date: start,
           ongoing: ongoing,
-          note: item.note || ""
+          note: item.note || "",
+          updatedAt: item.updatedAt || ""
         };
       });
       // 吵架记录：补上来自谁
@@ -197,7 +229,8 @@ document.addEventListener("DOMContentLoaded", function () {
           date: item.date || "",
           note: item.note || "",
           resolve: item.resolve || "",
-          reflection: item.reflection || ""
+          reflection: item.reflection || "",
+          updatedAt: item.updatedAt || ""
         };
       });
       // 甜蜜想法：去掉旧的自动标题，正文保留在 note
@@ -210,7 +243,8 @@ document.addEventListener("DOMContentLoaded", function () {
           author: item.author || "",
           date: item.date || "",
           note: note,
-          title: ""
+          title: "",
+          updatedAt: item.updatedAt || ""
         };
       });
       // 足迹：兼容旧的单日期字段
@@ -224,7 +258,8 @@ document.addEventListener("DOMContentLoaded", function () {
           dateEnd: end,
           cost: Number(item.cost) || 0,
           note: item.note || "",
-          photos: Array.isArray(item.photos) ? item.photos : []
+          photos: Array.isArray(item.photos) ? item.photos : [],
+          updatedAt: item.updatedAt || ""
         };
       });
       if (parsed.anniversaries.length === 0) {
@@ -1897,8 +1932,10 @@ document.addEventListener("DOMContentLoaded", function () {
           oldEvent.date = eventFields.date;
           oldEvent.ongoing = eventFields.ongoing;
           oldEvent.note = eventFields.note;
+          touchUpdatedAt(oldEvent);
         } else {
           eventFields.id = uid();
+          touchUpdatedAt(eventFields);
           data.events.push(eventFields);
         }
         saveData();
@@ -1940,6 +1977,7 @@ document.addEventListener("DOMContentLoaded", function () {
           old.resolve = fields.resolve;
           old.reflection = fields.reflection;
         }
+        touchUpdatedAt(old);
         // 纪念日：保留置顶、排序与提醒状态
       } else {
         var entry = {
@@ -1962,6 +2000,7 @@ document.addEventListener("DOMContentLoaded", function () {
           entry.resolve = fields.resolve;
           entry.reflection = fields.reflection;
         }
+        touchUpdatedAt(entry);
         data[type].push(entry);
       }
 
@@ -2001,6 +2040,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
       if (act === "pin") {
         item.pinned = !item.pinned;
+        touchUpdatedAt(item);
         reindexOrders(list);
         saveData();
         renderAnniversaries();
@@ -2009,6 +2049,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
       if (act === "remind") {
         item.remind = !item.remind;
+        touchUpdatedAt(item);
         saveData();
         renderAnniversaries();
         renderReminders();
@@ -2029,6 +2070,8 @@ document.addEventListener("DOMContentLoaded", function () {
         var orderB = visible[swapWith].order;
         visible[vIdx].order = orderB;
         visible[swapWith].order = orderA;
+        touchUpdatedAt(visible[vIdx]);
+        touchUpdatedAt(visible[swapWith]);
         saveData();
         renderAnniversaries();
         return;
