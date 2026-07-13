@@ -4031,14 +4031,94 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
+  // ----- 前台轻量自动同步：对方改了大约十几秒内能看到，不必每次手动刷新 -----
+  var liveSyncTimer = null;
+  var quietPullRunning = false;
+  var LIVE_SYNC_MS = 12000;
+
+  function stopLiveSync() {
+    if (liveSyncTimer) {
+      clearInterval(liveSyncTimer);
+      liveSyncTimer = null;
+    }
+  }
+
+  function runQuietPull() {
+    if (!appStarted) return Promise.resolve(false);
+    if (document.visibilityState !== "visible") return Promise.resolve(false);
+    if (!window.XinbaoCloud || !XinbaoCloud.canSync()) return Promise.resolve(false);
+    if (typeof XinbaoCloud.pullJournalIfNewer !== "function") {
+      return Promise.resolve(false);
+    }
+    if (mergePushRunning || quietPullRunning) return Promise.resolve(false);
+    quietPullRunning = true;
+    return XinbaoCloud.pullJournalIfNewer()
+      .then(function (result) {
+        if (!result || result.kind !== "payload") return false;
+        var localSnapshot = JSON.parse(JSON.stringify(data || loadData()));
+        var merged = mergeRemoteWithLiveLocal(result.payload, localSnapshot);
+        var before = "";
+        var after = "";
+        try {
+          before = JSON.stringify(data || {});
+          after = JSON.stringify(merged || {});
+        } catch (err) {
+          before = "";
+          after = "x";
+        }
+        if (before === after) return false;
+        data = merged;
+        try {
+          persistLocalData(data);
+        } catch (err) {
+          console.warn(err);
+        }
+        try {
+          applySiteTitle();
+          renderAll();
+          if (document.body.dataset.view === "anniversaries") {
+            renderReminders();
+          }
+          renderPairPanel();
+        } catch (err) {}
+        return true;
+      })
+      .catch(function (err) {
+        console.warn("自动同步失败", err);
+        return false;
+      })
+      .then(function (changed) {
+        quietPullRunning = false;
+        return changed;
+      });
+  }
+
+  function startLiveSync() {
+    stopLiveSync();
+    if (!window.XinbaoCloud || !XinbaoCloud.canSync()) return;
+    liveSyncTimer = setInterval(function () {
+      runQuietPull();
+    }, LIVE_SYNC_MS);
+    runQuietPull();
+  }
+
+  var _bootWithDataOrig = bootWithData;
+  bootWithData = function () {
+    _bootWithDataOrig();
+    try {
+      startLiveSync();
+    } catch (err) {}
+  };
+
   startApp();
   document.addEventListener("site-unlocked", startApp);
 
-  // 切回页面时再拉一次，另一端刚改的提醒能更快出现
+  // 切回页面时完整合并推送；并（重新）打开前台轻量同步
   document.addEventListener("visibilitychange", function () {
     if (document.visibilityState !== "visible") return;
     if (!appStarted) return;
     if (!window.XinbaoCloud || !XinbaoCloud.canSync()) return;
     queueMergePush({ immediate: true });
+    startLiveSync();
   });
 });

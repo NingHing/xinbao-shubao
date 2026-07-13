@@ -139,6 +139,8 @@ window.XinbaoCloud = (function () {
     });
   }
 
+  var lastRemoteUpdatedAt = "";
+
   function pullJournal() {
     var c = ensureClient();
     if (!canSync()) return Promise.resolve(null);
@@ -151,10 +153,48 @@ window.XinbaoCloud = (function () {
         if (res.error) throw res.error;
         if (!res.data) {
           journalId = null;
+          lastRemoteUpdatedAt = "";
           return null;
         }
         journalId = res.data.id;
+        if (res.data.updated_at) lastRemoteUpdatedAt = res.data.updated_at;
         return res.data.payload || null;
+      });
+  }
+
+  /**
+   * 先只问云端「有没有更新」；没有变化就不拉整本，省流量也更快。
+   * 返回：{ kind: "unchanged"|"empty"|"payload", payload?, updatedAt? }
+   */
+  function pullJournalIfNewer() {
+    var c = ensureClient();
+    if (!canSync()) {
+      return Promise.resolve({ kind: "empty" });
+    }
+    return c
+      .from("journals")
+      .select("id, updated_at")
+      .eq("pair_id", pair.id)
+      .maybeSingle()
+      .then(function (res) {
+        if (res.error) throw res.error;
+        if (!res.data) {
+          journalId = null;
+          lastRemoteUpdatedAt = "";
+          return { kind: "empty" };
+        }
+        journalId = res.data.id;
+        var at = res.data.updated_at || "";
+        if (at && at === lastRemoteUpdatedAt) {
+          return { kind: "unchanged", updatedAt: at };
+        }
+        return pullJournal().then(function (payload) {
+          return {
+            kind: "payload",
+            payload: payload,
+            updatedAt: lastRemoteUpdatedAt || at
+          };
+        });
       });
   }
 
@@ -311,10 +351,12 @@ window.XinbaoCloud = (function () {
             .then(function (r2) {
               if (r2.data) journalId = r2.data.id;
               lastPushed = json;
+              if (row.updated_at) lastRemoteUpdatedAt = row.updated_at;
               emitStatus("synced", "刚刚同步成功");
             });
         }
         lastPushed = json;
+        if (row.updated_at) lastRemoteUpdatedAt = row.updated_at;
         emitStatus("synced", "刚刚同步成功");
       })
       .catch(function (err) {
@@ -519,6 +561,7 @@ window.XinbaoCloud = (function () {
     leavePair: leavePair,
     loadPair: loadPair,
     pullJournal: pullJournal,
+    pullJournalIfNewer: pullJournalIfNewer,
     pushJournal: pushJournal,
     queuePush: queuePush,
     uploadPlacePhoto: uploadPlacePhoto,
