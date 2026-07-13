@@ -112,6 +112,89 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
+  /** 合并足迹照片：绝不让空数组盖掉已有照片；https 云链优先保留 */
+  function mergePhotoLists(a, b) {
+    var seen = {};
+    var out = [];
+    function add(src) {
+      if (typeof src !== "string" || !src || src === "data:,") return;
+      if (seen[src]) return;
+      seen[src] = true;
+      out.push(src);
+    }
+    var listA = Array.isArray(a) ? a : [];
+    var listB = Array.isArray(b) ? b : [];
+    listA.forEach(function (src) {
+      if (/^https?:\/\//i.test(src)) add(src);
+    });
+    listB.forEach(function (src) {
+      if (/^https?:\/\//i.test(src)) add(src);
+    });
+    listA.forEach(function (src) {
+      if (typeof src === "string" && src.indexOf("data:") === 0) add(src);
+    });
+    listB.forEach(function (src) {
+      if (typeof src === "string" && src.indexOf("data:") === 0) add(src);
+    });
+    if (out.length > 5) out = out.slice(0, 5);
+    return out;
+  }
+
+  /** 足迹按 id 合并正文，照片单独合并，避免「新文本无图」冲掉另一边的相册 */
+  function mergePlacesById(remoteArr, localArr) {
+    var remoteMap = {};
+    var localMap = {};
+    (remoteArr || []).forEach(function (item) {
+      if (item && item.id) remoteMap[item.id] = item;
+    });
+    (localArr || []).forEach(function (item) {
+      if (item && item.id) localMap[item.id] = item;
+    });
+    var ids = {};
+    Object.keys(remoteMap).forEach(function (id) {
+      ids[id] = true;
+    });
+    Object.keys(localMap).forEach(function (id) {
+      ids[id] = true;
+    });
+    return Object.keys(ids).map(function (id) {
+      var remoteItem = remoteMap[id];
+      var localItem = localMap[id];
+      if (!remoteItem) return localItem;
+      if (!localItem) return remoteItem;
+      var preferLocal = sweetStamp(localItem) >= sweetStamp(remoteItem);
+      var base = preferLocal ? localItem : remoteItem;
+      var other = preferLocal ? remoteItem : localItem;
+      var out = Object.assign({}, other, base);
+      out.photos = mergePhotoLists(localItem.photos, remoteItem.photos);
+      return out;
+    });
+  }
+
+  /** 把其他副本里的足迹照片合并进目标日记（同步前补链用） */
+  function mergePlacesPhotosInto(targetJournal, sideA, sideB) {
+    var clone = JSON.parse(JSON.stringify(targetJournal || {}));
+    var mapA = {};
+    var mapB = {};
+    ((sideA && sideA.places) || []).forEach(function (p) {
+      if (p && p.id) mapA[p.id] = p;
+    });
+    ((sideB && sideB.places) || []).forEach(function (p) {
+      if (p && p.id) mapB[p.id] = p;
+    });
+    (clone.places || []).forEach(function (place) {
+      if (!place || !place.id) return;
+      place.photos = mergePhotoLists(
+        place.photos,
+        mergePhotoLists(
+          (mapA[place.id] && mapA[place.id].photos) || [],
+          (mapB[place.id] && mapB[place.id].photos) || []
+        )
+      );
+    });
+    return clone;
+  }
+
   function mergeTombstones(localStones, remoteStones) {
     var out = {};
     function absorb(src) {
@@ -241,6 +324,8 @@ document.addEventListener("DOMContentLoaded", function () {
       if (Array.isArray(defaultData[key])) {
         if (key === "sweets") {
           out[key] = mergeSweetsById(remote[key], local[key]);
+        } else if (key === "places") {
+          out[key] = mergePlacesById(remote[key], local[key]);
         } else {
           out[key] = mergeById(remote[key], local[key]);
         }
@@ -1003,7 +1088,7 @@ document.addEventListener("DOMContentLoaded", function () {
     return { journal: clone, removed: removed };
   }
 
-  /** 本机保存：手机 localStorage 很小，超配额时自动去掉大图以免整站挂掉 */
+  /** 本机保存：手机 localStorage 很小，超配额时磁盘写入去掉大图，内存仍保留照片并尽快同步到云相册 */
   function persistLocalData(journal) {
     var payload = journal || data;
     if (payload && payload.tombstones) {
@@ -1017,8 +1102,17 @@ document.addEventListener("DOMContentLoaded", function () {
       var slim = stripEmbeddedPhotos(payload).journal;
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(slim));
-        showToast("手机存储快满了，已先保存不含大图的版本");
-        return slim;
+        showToast("手机存储快满了，大图先留在内存并尝试传到云相册");
+        if (
+          journalHasEmbeddedPhotos(payload) &&
+          window.XinbaoCloud &&
+          XinbaoCloud.canSync()
+        ) {
+          ensureCloudPayload._skipMigrate = false;
+          queueMergePush({ immediate: true });
+        }
+        // 返回完整本，避免调用方以为照片已删
+        return payload;
       } catch (err2) {
         throw new Error(
           "手机存储配额已满。请用电脑打开并记同步一次（压缩照片），再回手机点「重新加载页面」"
@@ -1322,7 +1416,9 @@ document.addEventListener("DOMContentLoaded", function () {
         } catch (err) {}
         return ensureCloudPayload(data).then(function (ready) {
           if (ready.localJournal) {
-            data = applyDurableDeletes(ready.localJournal);
+            data = applyDurableDeletes(
+              mergePlacesPhotosInto(ready.localJournal, data, remote)
+            );
             try {
               persistLocalData(data);
             } catch (err) {
@@ -1332,7 +1428,14 @@ document.addEventListener("DOMContentLoaded", function () {
               renderAll();
             } catch (err) {}
           }
-          return XinbaoCloud.pushJournal(ready.cloudJournal || data);
+          var cloud = ready.cloudJournal || data;
+          if (ready.stripped) {
+            // 剥掉 base64 上传前，先把两边已有的 https 云链补回去，避免空相册盖掉云端
+            cloud = stripEmbeddedPhotos(
+              mergePlacesPhotosInto(cloud, data, remote)
+            ).journal;
+          }
+          return XinbaoCloud.pushJournal(cloud);
         });
       })
       .catch(function (err) {
