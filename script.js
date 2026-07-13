@@ -1886,9 +1886,11 @@ document.addEventListener("DOMContentLoaded", function () {
             oldPlace.cost = placeFields.cost;
             oldPlace.note = placeFields.note;
             oldPlace.photos = placeFields.photos;
+            touchUpdatedAt(oldPlace);
             saveData();
           } else {
             placeFields.id = uid();
+            touchUpdatedAt(placeFields);
             data.places.push(placeFields);
             saveData();
           }
@@ -2179,4 +2181,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
   startApp();
   document.addEventListener("site-unlocked", startApp);
+
+  // 切回页面时再拉一次，另一端刚改的提醒能更快出现
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState !== "visible") return;
+    if (!appStarted) return;
+    if (!window.XinbaoCloud || !XinbaoCloud.canSync()) return;
+    queueMergePush({ immediate: true });
+  });
 });
