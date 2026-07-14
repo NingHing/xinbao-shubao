@@ -940,16 +940,55 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
+  var PUBLISHED_SEED_VERSION = "20260713-recover-sweets";
+  var seedLoadPromise = null;
+
+  function getPublishedSeed() {
+    return window.XINBAO_SEED || window.SEED_DATA || null;
+  }
+
+  function loadPublishedSeedScript() {
+    if (getPublishedSeed()) return Promise.resolve(getPublishedSeed());
+    if (seedLoadPromise) return seedLoadPromise;
+    seedLoadPromise = new Promise(function (resolve) {
+      var s = document.createElement("script");
+      s.src = "seed-data.js?v=" + PUBLISHED_SEED_VERSION;
+      s.async = true;
+      s.onload = function () {
+        resolve(getPublishedSeed());
+      };
+      s.onerror = function () {
+        resolve(null);
+      };
+      document.head.appendChild(s);
+    });
+    return seedLoadPromise;
+  }
+
+  function needsPublishedSeed() {
+    try {
+      if (localStorage.getItem(SEED_VERSION_KEY) === PUBLISHED_SEED_VERSION) {
+        return false;
+      }
+    } catch (err) {}
+    // 已有本机日记时不必再下 400KB 种子
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (raw && raw.length > 80) return false;
+    } catch (err2) {}
+    return true;
+  }
+
   function applyPublishedSeedIfNeeded() {
-    var seed = window.XINBAO_SEED;
-    if (!seed || !seed.data) return;
-    var ver = String(seed.version || "");
-    if (!ver) return;
+    var seed = getPublishedSeed();
+    if (!seed || !seed.data) return false;
+    var ver = String(seed.version || PUBLISHED_SEED_VERSION || "");
+    if (!ver) return false;
     var applied = "";
     try {
       applied = localStorage.getItem(SEED_VERSION_KEY) || "";
     } catch (err) {}
-    if (applied === ver) return;
+    if (applied === ver) return false;
     try {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(seed.data));
@@ -967,9 +1006,18 @@ document.addEventListener("DOMContentLoaded", function () {
         }
       }
       localStorage.setItem(SEED_VERSION_KEY, ver);
+      return true;
     } catch (err) {
       console.warn("发布快照写入失败", err);
+      return false;
     }
+  }
+
+  function ensurePublishedSeedIfNeeded() {
+    if (!needsPublishedSeed()) return Promise.resolve(false);
+    return loadPublishedSeedScript().then(function () {
+      return applyPublishedSeedIfNeeded();
+    });
   }
 
   function loadData() {
@@ -4654,50 +4702,70 @@ document.addEventListener("DOMContentLoaded", function () {
     appStarted = true;
     wirePairControls();
 
-    try {
-      if (window.XinbaoCloud && XinbaoCloud.configured() && XinbaoCloud.getUser()) {
-        XinbaoCloud.loadPair()
-          .then(function () {
-            renderPairPanel();
-            if (!XinbaoCloud.canSync()) {
-              // 已登录但未配对：仍用本机/种子
-              applyPublishedSeedIfNeeded();
-              bootWithData();
-              return null;
-            }
-            return XinbaoCloud.pullJournal().then(function (payload) {
-              if (payload) {
-                var merged = mergeRemoteWithLiveLocal(payload, loadData());
-                try {
-                  persistLocalData(merged);
-                } catch (err) {
-                  console.warn(err);
-                }
-              } else {
-                applyPublishedSeedIfNeeded();
-              }
-              bootWithData();
-              // 确保云端有一份（含找回的想法）
-              return XinbaoCloud.pushJournal(data);
-            });
-          })
-          .catch(function (err) {
-            console.warn("云端启动失败，回退本机", err);
-            applyPublishedSeedIfNeeded();
-            bootWithData();
-          });
-        return;
+    // 先立刻用本机数据画出首页，再在后台拉云端——手机不再干等 10 秒白屏
+    function paintLocalFirst() {
+      try {
+        bootWithData();
+      } catch (err) {
+        console.warn("本机启动失败", err);
+        try {
+          data = JSON.parse(JSON.stringify(defaultData));
+          renderAll();
+        } catch (err2) {}
+      }
+    }
+
+    function refreshFromCloud() {
+      if (!window.XinbaoCloud || !XinbaoCloud.configured() || !XinbaoCloud.getUser()) {
+        return ensurePublishedSeedIfNeeded().then(function (applied) {
+          if (applied) {
+            data = applyRecoveredSweets(loadData());
+            renderAll();
+          }
+        });
       }
 
-      applyPublishedSeedIfNeeded();
-      bootWithData();
-    } catch (err) {
-      console.warn("启动失败", err);
-      try {
-        data = JSON.parse(JSON.stringify(defaultData));
-        renderAll();
-      } catch (err2) {}
+      return XinbaoCloud.loadPair()
+        .then(function () {
+          renderPairPanel();
+          if (!XinbaoCloud.canSync()) {
+            return ensurePublishedSeedIfNeeded().then(function (applied) {
+              if (applied) {
+                data = applyRecoveredSweets(loadData());
+                renderAll();
+              }
+            });
+          }
+          return XinbaoCloud.pullJournal().then(function (payload) {
+            if (payload) {
+              var merged = mergeRemoteWithLiveLocal(payload, loadData());
+              try {
+                persistLocalData(merged);
+              } catch (err) {
+                console.warn(err);
+              }
+              data = applyRecoveredSweets(merged);
+              reindexOrders(data.anniversaries);
+              applySiteTitle();
+              applyAuthorLabels();
+              renderAll();
+              return XinbaoCloud.pushJournal(data);
+            }
+            return ensurePublishedSeedIfNeeded().then(function (applied) {
+              if (applied) {
+                data = applyRecoveredSweets(loadData());
+                renderAll();
+              }
+            });
+          });
+        })
+        .catch(function (err) {
+          console.warn("云端启动失败，保留本机内容", err);
+        });
     }
+
+    paintLocalFirst();
+    refreshFromCloud();
   }
 
   // ----- 前台自动同步：Realtime 优先 + 手机友好轮询/唤醒 -----

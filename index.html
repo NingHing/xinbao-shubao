@@ -12,10 +12,20 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="icons/icon-180.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600&family=Noto+Serif+SC:wght@500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=layout-restore-v1" />
+  <!-- 字体异步加载：先用系统中文字体出字，避免手机等谷歌字体十几秒 -->
+  <link
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600&family=Noto+Serif+SC:wght@500;600&display=swap"
+    media="print"
+    onload="this.media='all'"
+  />
+  <noscript>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600&family=Noto+Serif+SC:wght@500;600&display=swap" rel="stylesheet" />
+  </noscript>
+  <link rel="stylesheet" href="styles.css?v=mobile-boot-v1" />
 </head>
 <body class="is-locked" data-view="home">
   <!-- App 顶栏：设置入口（解锁后显示） -->
@@ -174,6 +184,8 @@
     <div class="gate-card">
       <p class="gate-kicker">二人一本</p>
       <h1 id="gate-title" class="gate-title">并记</h1>
+
+      <p id="gate-checking" class="gate-hint">正在检查登录状态…</p>
 
       <!-- 云端登录 -->
       <div id="gate-cloud" hidden>
@@ -610,8 +622,13 @@
 
       var gateCloud = document.getElementById("gate-cloud");
       var gateLocal = document.getElementById("gate-local");
+      var gateChecking = document.getElementById("gate-checking");
       var cloudError = document.getElementById("cloud-auth-error");
       var localError = document.getElementById("gate-error");
+
+      function setChecking(on) {
+        if (gateChecking) gateChecking.hidden = !on;
+      }
 
       function rememberUnlock() {
         try {
@@ -675,6 +692,7 @@
       }
 
       function showGateMode() {
+        setChecking(false);
         if (cloudReady()) {
           if (gateCloud) gateCloud.hidden = false;
           if (gateLocal) gateLocal.hidden = true;
@@ -684,10 +702,38 @@
         }
       }
 
+      function withTimeout(promise, ms) {
+        return new Promise(function (resolve, reject) {
+          var done = false;
+          var timer = setTimeout(function () {
+            if (done) return;
+            done = true;
+            reject(new Error("timeout"));
+          }, ms);
+          Promise.resolve(promise).then(
+            function (value) {
+              if (done) return;
+              done = true;
+              clearTimeout(timer);
+              resolve(value);
+            },
+            function (err) {
+              if (done) return;
+              done = true;
+              clearTimeout(timer);
+              reject(err);
+            }
+          );
+        });
+      }
+
       function enterIfPossible() {
         if (cloudReady()) {
-          // 已配置云端：只有登录会话才能进，不再用「本机开过门」或暗号绕过
-          XinbaoCloud.restoreSession()
+          // 先露出「检查中」，避免空白干等；会话检查加超时，慢网也能看到登录框
+          setChecking(true);
+          if (gateCloud) gateCloud.hidden = true;
+          if (gateLocal) gateLocal.hidden = true;
+          withTimeout(XinbaoCloud.restoreSession(), 3500)
             .then(function (user) {
               if (user) unlock();
               else {
@@ -696,12 +742,13 @@
               }
             })
             .catch(function () {
+              // 超时或失败：先显示登录；若稍后会话恢复，用户可再登一次
               clearRememberedUnlock();
               showGateMode();
             });
           return;
         }
-        // 未配置云端时，才允许本机暗号 / 记住状态
+        setChecking(false);
         if (hasRememberedUnlock()) unlock();
         else showGateMode();
       }
@@ -761,8 +808,8 @@
       }
     })();
   </script>
-  <script src="seed-data.js?v=20260713-recover-sweets"></script>
-  <script src="script.js?v=login-only-v1"></script>
+  <!-- seed-data.js（约 400KB）改为按需加载，避免每次打开都卡住手机 -->
+  <script src="script.js?v=mobile-boot-v1"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", function () {
