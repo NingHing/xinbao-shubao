@@ -1304,7 +1304,10 @@ document.addEventListener("DOMContentLoaded", function () {
     return step(0);
   }
 
-  function ensureCloudPayload(journal) {
+  function ensureCloudPayload(journal, options) {
+    options = options || {};
+    // 仅在用户主动保存/点同步时提示；后台自动同步保持安静
+    var notify = options.notify === true;
     var originalSize = JSON.stringify(journal || {}).length;
     var hasEmbedded = journalHasEmbeddedPhotos(journal);
     var oversized = originalSize > CLOUD_PAYLOAD_SOFT_LIMIT;
@@ -1319,7 +1322,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // 只有真的要压缩时才弹提示，避免每次切回页面都刷「正在处理照片」
-    if (oversized) {
+    if (oversized && notify) {
       try {
         showToast("日记较大，正在压缩后同步…");
       } catch (err) {}
@@ -1372,9 +1375,9 @@ document.addEventListener("DOMContentLoaded", function () {
             changed: size < originalSize || stillEmbedded !== hasEmbedded
           };
         }
-        // 仍然过大：云端只能先不同步内嵌大图（会明确提示）
+        // 仍然过大：云端只能先不同步内嵌大图（仅主动操作时提示）
         var safe = stripEmbeddedPhotos(localJournal);
-        if (safe.removed) {
+        if (safe.removed && notify) {
           try {
             showToast(
               "照片未能完整同步到云端（另一台可能还看不到）。请少放几张，或配置云相册后再保存"
@@ -1894,7 +1897,7 @@ document.addEventListener("DOMContentLoaded", function () {
               applySiteTitle();
               renderAll();
               renderPairPanel();
-              return ensureCloudPayload(data).then(function (ready) {
+              return ensureCloudPayload(data, { notify: true }).then(function (ready) {
                 if (ready.localJournal) {
                   data = applyDurableDeletes(ready.localJournal);
                   try {
@@ -2124,7 +2127,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         setPairMsg("正在同步…");
         ensureCloudPayload._skipMigrate = false;
-        ensureCloudPayload(data)
+        ensureCloudPayload(data, { notify: true })
           .then(function (ready) {
             if (ready.localJournal) {
               data = ready.localJournal;
@@ -2165,7 +2168,8 @@ document.addEventListener("DOMContentLoaded", function () {
     data = applyRecoveredSweets(loadData());
     reindexOrders(data.anniversaries);
     try {
-      saveData();
+      // 启动只写本机，不要立刻 saveData→合并上传，否则每次打开都会因大图剥除弹「照片未能完整同步」
+      persistLocalData(data);
     } catch (err) {
       console.warn("保存失败（可能是手机存储空间不足）", err);
     }
