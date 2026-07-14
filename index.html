@@ -609,10 +609,16 @@
   <!-- 轻提示：保存成功等 -->
   <div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
 
-  <!-- 门禁：云端账号（supabase 改为站内文件，避免每次请求国外 CDN） -->
-  <script src="vendor/supabase.js?v=2"></script>
+  <!-- 门禁：先保证登录可用（CDN）；本地 vendor 作加速备份 -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // 若 CDN 失败而本地 vendor 已缓存，可手动启用；当前以 CDN 保证登录
+    if (!window.supabase && typeof supabase !== "undefined") {
+      window.supabase = supabase;
+    }
+  </script>
   <script src="config.js"></script>
-  <script src="cloud-sync.js?v=mobile-realtime-v1"></script>
+  <script src="cloud-sync.js?v=login-fix-v1"></script>
   <script>
     (function () {
       // 本地暗号仅在「未配置云端」时使用；已配置云端则必须登录账号
@@ -758,23 +764,7 @@
 
       function enterIfPossible() {
         if (cloudReady()) {
-          // 曾登录过：先解锁进首页，后台再校验会话（避免每次干等网络）
-          if (hasAuthHint()) {
-            setChecking(false);
-            unlock();
-            XinbaoCloud.restoreSession()
-              .then(function (user) {
-                if (user) return;
-                setAuthHint(false);
-                clearRememberedUnlock();
-                relock();
-                showGateMode();
-              })
-              .catch(function () {
-                // 网络差时保持已解锁的本机内容，稍后同步即可
-              });
-            return;
-          }
+          // 先不要乐观解锁：避免会话异常时卡在怪状态；仍缩短等待
           setChecking(true);
           if (gateCloud) gateCloud.hidden = true;
           if (gateLocal) gateLocal.hidden = true;
@@ -835,18 +825,37 @@
       }
 
       var cloudForm = document.getElementById("cloud-auth-form");
+      var cloudLoginBtn = document.getElementById("cloud-login-btn");
       if (cloudForm) {
         cloudForm.addEventListener("submit", function (e) {
           e.preventDefault();
           showCloudError("");
+          if (!window.supabase || !window.supabase.createClient) {
+            showCloudError("登录组件未加载，请刷新页面后再试");
+            return;
+          }
+          if (!cloudReady()) {
+            showCloudError("云端未配置，暂时无法登录");
+            return;
+          }
           var email = document.getElementById("cloud-email").value.trim();
           var password = document.getElementById("cloud-password").value;
+          if (cloudLoginBtn) {
+            cloudLoginBtn.disabled = true;
+            cloudLoginBtn.textContent = "登录中…";
+          }
           XinbaoCloud.signIn(email, password)
             .then(function () {
               unlock();
             })
             .catch(function (err) {
               showCloudError((err && err.message) || "登录失败");
+            })
+            .then(function () {
+              if (cloudLoginBtn) {
+                cloudLoginBtn.disabled = false;
+                cloudLoginBtn.textContent = "登录";
+              }
             });
         });
       }

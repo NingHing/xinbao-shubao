@@ -445,6 +445,11 @@ window.XinbaoCloud = (function () {
 
   function signIn(email, password) {
     var c = ensureClient();
+    if (!c) {
+      return Promise.reject(
+        new Error("登录组件未加载成功，请刷新页面后重试")
+      );
+    }
     return c.auth.signInWithPassword({ email: email, password: password }).then(function (res) {
       if (res.error) throw new Error(friendlyAuthError(res.error.message));
       user = res.data.user;
@@ -456,6 +461,11 @@ window.XinbaoCloud = (function () {
 
   function signUp(email, password) {
     var c = ensureClient();
+    if (!c) {
+      return Promise.reject(
+        new Error("登录组件未加载成功，请刷新页面后重试")
+      );
+    }
     return c.auth.signUp({ email: email, password: password }).then(function (res) {
       if (res.error) throw new Error(friendlyAuthError(res.error.message));
       if (!res.data.session) {
