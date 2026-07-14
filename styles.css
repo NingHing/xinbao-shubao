@@ -877,63 +877,79 @@ body.is-locked .app-settings-btn {
 }
 
 .tile-grid {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 0.85rem;
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: center;
+  align-items: center;
+  gap: 1.1rem;
   width: 100%;
-  align-items: start;
-  justify-items: center;
   overflow: visible;
-  padding: 0.5rem 0.35rem 0.35rem;
+  padding: 1.1rem 0.25rem 0.85rem;
   animation: rise 0.8s ease 0.1s both;
 }
 
-.tile-grid .tile:nth-child(5) {
-  grid-column: auto;
-  width: auto;
-  justify-self: center;
+@media (max-width: 900px) and (min-width: 641px) {
+  .tile-grid {
+    gap: 0.75rem;
+  }
+
+  .tile {
+    width: 5.85rem;
+  }
+
+  .tile-name {
+    font-size: 0.82rem;
+  }
 }
 
 .tile {
+  --ty: 0px;
   position: relative;
   overflow: visible;
   aspect-ratio: 1 / 1;
-  width: min(100%, 6.5rem);
+  flex: 0 0 auto;
+  width: 7rem;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.2rem;
-  border: 1.5px dashed rgba(74, 103, 128, 0.55);
+  gap: 0.18rem;
+  border: 1.5px dashed rgba(74, 103, 128, 0.45);
   border-radius: 50%;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.28);
   color: var(--ink);
   cursor: pointer;
   font: inherit;
   text-decoration: none;
   box-shadow: none;
-  transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+  transform: translateY(var(--ty));
+  transition: transform 0.25s ease, border-color 0.25s ease, background-color 0.25s ease;
 }
+
+.tile-grid .tile:nth-child(1) { --ty: 1.1rem; }
+.tile-grid .tile:nth-child(2) { --ty: 0.35rem; }
+.tile-grid .tile:nth-child(3) { --ty: 0; }
+.tile-grid .tile:nth-child(4) { --ty: 0.35rem; }
+.tile-grid .tile:nth-child(5) { --ty: 1.1rem; }
 
 .tile-badge {
   position: absolute;
-  top: 0.15rem;
-  right: 0.15rem;
+  top: 0.2rem;
+  right: 0.2rem;
   z-index: 2;
-  min-width: 1.25rem;
-  height: 1.25rem;
-  padding: 0 0.3rem;
+  min-width: 1.2rem;
+  height: 1.2rem;
+  padding: 0 0.28rem;
   border-radius: 999px;
   background: #4a6780;
   color: #fff;
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   font-weight: 700;
-  line-height: 1.25rem;
+  line-height: 1.2rem;
   text-align: center;
   letter-spacing: 0;
   border: 2px solid #fff;
-  box-shadow: 0 2px 8px rgba(74, 103, 128, 0.28);
-  transform: none;
+  box-shadow: 0 2px 8px rgba(74, 103, 128, 0.25);
   pointer-events: none;
 }
 
@@ -943,35 +959,27 @@ body.is-locked .app-settings-btn {
 
 .tile:hover,
 .tile:focus-visible {
-  transform: translateY(-3px) scale(1.04);
+  transform: translateY(calc(var(--ty) - 0.35rem)) scale(1.05);
   border-color: var(--rose-deep);
-  border-style: dashed;
-  background: rgba(255, 255, 255, 0.55);
-  box-shadow: none;
+  background: rgba(255, 255, 255, 0.72);
   outline: none;
 }
 
 .tile-num {
-  font-size: 0.58rem;
-  letter-spacing: 0.18em;
+  font-size: 0.55rem;
+  letter-spacing: 0.2em;
   color: var(--gold);
+  opacity: 0.85;
 }
 
 .tile-name {
   font-family: var(--font-display);
-  font-size: clamp(0.78rem, 1.6vw, 0.98rem);
-  letter-spacing: 0.08em;
+  font-size: 0.92rem;
+  letter-spacing: 0.06em;
   font-weight: 600;
   text-align: center;
   line-height: 1.2;
-  padding: 0 0.45rem;
-}
-
-@media (max-width: 640px) {
-  .tile-name {
-    font-size: 0.82rem;
-    letter-spacing: 0.02em;
-  }
+  padding: 0 0.55rem;
 }
 
 .page-bar {
@@ -1875,55 +1883,63 @@ body.is-locked .app-settings-btn {
     margin-bottom: 1.1rem;
   }
 
-  /* 手机：圆形虚线入口，两列排布，第 5 个居中 */
+  /* 手机：上三下二，圆形虚线更稳 */
   .tile-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1rem 0.85rem;
-    justify-items: center;
-    padding: 0.55rem 0.25rem 0.35rem;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem 1.15rem;
+    max-width: 21rem;
+    margin: 0 auto;
+    padding: 0.75rem 0.2rem 0.5rem;
   }
 
+  .tile-grid .tile:nth-child(1),
+  .tile-grid .tile:nth-child(2),
+  .tile-grid .tile:nth-child(3),
+  .tile-grid .tile:nth-child(4),
   .tile-grid .tile:nth-child(5) {
-    grid-column: 1 / -1;
-    width: min(42vw, 6.25rem);
-    justify-self: center;
+    --ty: 0px;
   }
 
   .tile {
-    width: min(42vw, 6.25rem);
+    width: 5.6rem;
+    flex: 0 0 5.6rem;
     border-radius: 50%;
-    border: 1.5px dashed rgba(74, 103, 128, 0.55);
-    background: transparent;
+    border: 1.5px dashed rgba(74, 103, 128, 0.45);
+    background: rgba(255, 255, 255, 0.28);
     box-shadow: none;
-    gap: 0.15rem;
-    padding: 0.35rem;
+    gap: 0.12rem;
+    padding: 0.3rem;
   }
 
   .tile:hover,
   .tile:focus-visible {
+    transform: translateY(-0.25rem) scale(1.04);
     border-style: dashed;
     box-shadow: none;
-    background: rgba(255, 255, 255, 0.55);
+    background: rgba(255, 255, 255, 0.72);
   }
 
   .tile-name {
     font-size: 0.78rem;
     letter-spacing: 0.02em;
-    padding: 0 0.35rem;
+    padding: 0 0.4rem;
   }
 
   .tile-num {
-    font-size: 0.55rem;
-    letter-spacing: 0.14em;
+    font-size: 0.5rem;
+    letter-spacing: 0.16em;
   }
 
   .tile-badge {
-    top: 0.1rem;
-    right: 0.1rem;
-    min-width: 1.15rem;
-    height: 1.15rem;
-    line-height: 1.15rem;
-    font-size: 0.62rem;
+    top: 0.12rem;
+    right: 0.12rem;
+    min-width: 1.1rem;
+    height: 1.1rem;
+    line-height: 1.1rem;
+    font-size: 0.6rem;
   }
 
   /* 手机模块页：标题与正文略收，避免一屏字偏大 */
