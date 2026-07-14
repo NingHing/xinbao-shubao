@@ -12,20 +12,19 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="icons/icon-180.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
-  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <!-- 字体异步加载：先用系统中文字体出字，避免手机等谷歌字体十几秒 -->
-  <link
-    rel="stylesheet"
-    href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600&family=Noto+Serif+SC:wght@500;600&display=swap"
-    media="print"
-    onload="this.media='all'"
-  />
-  <noscript>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600&family=Noto+Serif+SC:wght@500;600&display=swap" rel="stylesheet" />
-  </noscript>
-  <link rel="stylesheet" href="styles.css?v=mobile-boot-v1" />
+  <link rel="dns-prefetch" href="https://uimlnuksqdyihtfxzdmu.supabase.co" />
+  <link rel="preconnect" href="https://uimlnuksqdyihtfxzdmu.supabase.co" crossorigin />
+  <!-- 不用谷歌字体：国内手机经常被拖慢；系统字体立刻出字 -->
+  <link rel="stylesheet" href="styles.css?v=mobile-fast-v2" />
+  <style>
+    /* 门禁关键样式：不等 styles.css 也能先看到标题 */
+    body.is-locked { margin: 0; background: #e8eef3; }
+    body.is-locked .view, body.is-locked .lightbox { display: none !important; }
+    .gate { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem; }
+    .gate-card { width: min(100%, 22rem); text-align: center; }
+    .gate-title { font-family: "Songti SC", "STSong", serif; font-size: 2rem; margin: 0.35rem 0 1rem; color: #2c3e50; }
+    .gate-kicker, .gate-hint { color: #5a6b7d; font-size: 0.92rem; }
+  </style>
 </head>
 <body class="is-locked" data-view="home">
   <!-- App 顶栏：设置入口（解锁后显示） -->
@@ -610,8 +609,8 @@
   <!-- 轻提示：保存成功等 -->
   <div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
 
-  <!-- 门禁：云端账号 或 本地暗号 -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- 门禁：云端账号（supabase 改为站内文件，避免每次请求国外 CDN） -->
+  <script src="vendor/supabase.js?v=2"></script>
   <script src="config.js"></script>
   <script src="cloud-sync.js?v=mobile-realtime-v1"></script>
   <script>
@@ -659,12 +658,42 @@
         try {
           sessionStorage.removeItem(KEY);
         } catch (err2) {}
+        setAuthHint(false);
       }
 
       window.XinbaoClearGate = clearRememberedUnlock;
 
+      var AUTH_HINT_KEY = "xinbao-shubao-auth-hint";
+
+      function setAuthHint(on) {
+        try {
+          if (on) localStorage.setItem(AUTH_HINT_KEY, "1");
+          else localStorage.removeItem(AUTH_HINT_KEY);
+        } catch (err) {}
+      }
+
+      function hasAuthHint() {
+        try {
+          return localStorage.getItem(AUTH_HINT_KEY) === "1";
+        } catch (err) {
+          return false;
+        }
+      }
+
+      function relock() {
+        document.body.classList.add("is-locked");
+        var gate = document.getElementById("gate");
+        if (gate) {
+          gate.hidden = false;
+          gate.style.display = "";
+        }
+        var settingsBtn = document.getElementById("btn-open-settings");
+        if (settingsBtn) settingsBtn.hidden = true;
+      }
+
       function unlock() {
         rememberUnlock();
+        setAuthHint(true);
         document.body.classList.remove("is-locked");
         var gate = document.getElementById("gate");
         if (gate) {
@@ -729,11 +758,27 @@
 
       function enterIfPossible() {
         if (cloudReady()) {
-          // 先露出「检查中」，避免空白干等；会话检查加超时，慢网也能看到登录框
+          // 曾登录过：先解锁进首页，后台再校验会话（避免每次干等网络）
+          if (hasAuthHint()) {
+            setChecking(false);
+            unlock();
+            XinbaoCloud.restoreSession()
+              .then(function (user) {
+                if (user) return;
+                setAuthHint(false);
+                clearRememberedUnlock();
+                relock();
+                showGateMode();
+              })
+              .catch(function () {
+                // 网络差时保持已解锁的本机内容，稍后同步即可
+              });
+            return;
+          }
           setChecking(true);
           if (gateCloud) gateCloud.hidden = true;
           if (gateLocal) gateLocal.hidden = true;
-          withTimeout(XinbaoCloud.restoreSession(), 3500)
+          withTimeout(XinbaoCloud.restoreSession(), 2500)
             .then(function (user) {
               if (user) unlock();
               else {
@@ -742,7 +787,6 @@
               }
             })
             .catch(function () {
-              // 超时或失败：先显示登录；若稍后会话恢复，用户可再登一次
               clearRememberedUnlock();
               showGateMode();
             });
@@ -809,7 +853,7 @@
     })();
   </script>
   <!-- seed-data.js（约 400KB）改为按需加载，避免每次打开都卡住手机 -->
-  <script src="script.js?v=quiet-photo-sync-v1"></script>
+  <script src="script.js?v=mobile-fast-v2"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", function () {

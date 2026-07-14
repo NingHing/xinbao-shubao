@@ -875,6 +875,8 @@ document.addEventListener("DOMContentLoaded", function () {
     document.body.dataset.view = name;
     if (name !== "home") {
       markModuleSeen(name);
+      // 子页按需渲染（尤其足迹含大图，启动时不预先画）
+      renderList(name);
     }
     renderActivity();
 
@@ -2050,6 +2052,7 @@ document.addEventListener("DOMContentLoaded", function () {
               localStorage.removeItem("xinbao-shubao-gate-ok");
               sessionStorage.removeItem("xinbao-shubao-gate-ok");
             }
+            localStorage.removeItem("xinbao-shubao-auth-hint");
           } catch (err) {}
           location.reload();
         });
@@ -2167,19 +2170,14 @@ document.addEventListener("DOMContentLoaded", function () {
   function bootWithData() {
     data = applyRecoveredSweets(loadData());
     reindexOrders(data.anniversaries);
-    try {
-      // 启动只写本机，不要立刻 saveData→合并上传，否则每次打开都会因大图剥除弹「照片未能完整同步」
-      persistLocalData(data);
-    } catch (err) {
-      console.warn("保存失败（可能是手机存储空间不足）", err);
-    }
+    // 启动不再把整本（含大图）写回 localStorage，手机上这一步经常卡几秒
     updateDaysTogether();
     fillDefaultDates();
     applySiteTitle();
     applyAuthorLabels();
     showAppChrome();
     renderPairPanel();
-    renderAll();
+    renderAll({ homeOnly: true });
     if (!location.hash || location.hash === "#") {
       location.replace("#home");
     }
@@ -3029,7 +3027,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 '">' +
                 '<img src="' +
                 src +
-                '" alt="" class="place-photo-thumb" />' +
+                '" alt="" class="place-photo-thumb" loading="lazy" decoding="async" />' +
                 "</button>"
               );
             })
@@ -3319,9 +3317,23 @@ document.addEventListener("DOMContentLoaded", function () {
     );
   }
 
-  function renderAll() {
+  function renderAll(options) {
+    options = options || {};
     applySiteTitle();
     applyAuthorLabels();
+    var view = document.body.dataset.view || "home";
+    // 首页启动：只画首页需要的块，避免足迹大图把手机主线程卡死
+    if (options.homeOnly || (view === "home" && !options.forceAll)) {
+      renderReminders();
+      renderActivity();
+      return;
+    }
+    if (view && view !== "home") {
+      renderList(view);
+      renderReminders();
+      renderActivity();
+      return;
+    }
     ["anniversaries", "events", "sweets", "places", "fights"].forEach(renderList);
     renderReminders();
     renderActivity();
@@ -4752,7 +4764,7 @@ document.addEventListener("DOMContentLoaded", function () {
               reindexOrders(data.anniversaries);
               applySiteTitle();
               applyAuthorLabels();
-              renderAll();
+              renderAll({ homeOnly: true });
               return XinbaoCloud.pushJournal(data);
             }
             return ensurePublishedSeedIfNeeded().then(function (applied) {
