@@ -15,7 +15,7 @@
   <link rel="dns-prefetch" href="https://uimlnuksqdyihtfxzdmu.supabase.co" />
   <link rel="preconnect" href="https://uimlnuksqdyihtfxzdmu.supabase.co" crossorigin />
   <!-- 不用谷歌字体：国内手机经常被拖慢；系统字体立刻出字 -->
-  <link rel="stylesheet" href="styles.css?v=circular-arc-v2" />
+  <link rel="stylesheet" href="styles.css?v=spine-mood-v1" />
   <style>
     /* 门禁关键样式：不等 styles.css 也能先看到标题 */
     body.is-locked { margin: 0; background: #e8eef3; }
@@ -222,17 +222,60 @@
     </div>
   </div>
 
-  <!-- ========== 首页：五个正方形入口 ========== -->
+  <!-- ========== 首页：心情 + 主线 + 五个入口 ========== -->
   <div id="view-home" class="view view-home is-active">
     <header class="home-hero">
       <p class="hero-kicker">二人一本</p>
       <h1 class="hero-title" id="site-title">并记</h1>
       <div class="hero-ornament" aria-hidden="true"></div>
-      <p class="hero-tagline">不催天天打开，只留下你们的节奏</p>
+      <p class="hero-tagline">记下你们感情的主线走向</p>
       <p class="hero-sub">从 2025.12.4 开始的故事</p>
       <p class="hero-days">在一起第 <span id="days-together">0</span> 天</p>
       <p class="hero-status" id="privacy-note">私密日记</p>
     </header>
+
+    <!-- 趣味附加：今日心情 -->
+    <section class="home-mood" id="home-mood" aria-label="今日心情">
+      <div class="mood-head">
+        <p class="mood-kicker">TODAY</p>
+        <h2 class="mood-title">今日心情</h2>
+      </div>
+      <div class="mood-pair">
+        <div class="mood-card" id="mood-card-partner">
+          <p class="mood-who" id="mood-partner-who">对方</p>
+          <p class="mood-emoji" id="mood-partner-emoji">·</p>
+          <p class="mood-label" id="mood-partner-label">今天还没写</p>
+          <p class="mood-note" id="mood-partner-note" hidden></p>
+        </div>
+        <div class="mood-card is-mine" id="mood-card-mine">
+          <p class="mood-who" id="mood-mine-who">我</p>
+          <p class="mood-emoji" id="mood-mine-emoji">·</p>
+          <p class="mood-label" id="mood-mine-label">点一下记下今天</p>
+          <p class="mood-note" id="mood-mine-note" hidden></p>
+        </div>
+      </div>
+      <div class="mood-picker" id="mood-picker" role="group" aria-label="选择今日心情">
+        <button type="button" class="mood-chip" data-mood="great" title="很好">很好</button>
+        <button type="button" class="mood-chip" data-mood="good" title="还行">还行</button>
+        <button type="button" class="mood-chip" data-mood="ok" title="一般">一般</button>
+        <button type="button" class="mood-chip" data-mood="tired" title="有点累">有点累</button>
+        <button type="button" class="mood-chip" data-mood="low" title="不太好">不太好</button>
+      </div>
+      <form class="mood-note-form" id="mood-note-form" hidden>
+        <label class="mood-note-label">
+          <span class="sr-only">一句短话（可选）</span>
+          <input
+            type="text"
+            id="mood-note-input"
+            maxlength="40"
+            placeholder="可选：写一句短话…"
+            autocomplete="off"
+          />
+        </label>
+        <button type="submit" class="btn btn-mini-bar">保存</button>
+      </form>
+      <ul class="mood-week" id="mood-week" aria-label="本周心情"></ul>
+    </section>
 
     <section class="home-activity" id="home-activity" hidden aria-label="新动态">
       <div class="activity-head">
@@ -253,7 +296,19 @@
       <ul class="reminder-list" id="list-reminders"></ul>
     </section>
 
-    <nav class="tile-grid" aria-label="功能入口">
+    <!-- 核心：感情主线时间轴 -->
+    <section class="home-spine" id="home-spine" aria-label="感情主线">
+      <div class="spine-head">
+        <div>
+          <p class="spine-kicker">STORY</p>
+          <h2 class="spine-title">感情主线</h2>
+        </div>
+        <button type="button" class="btn btn-ghost btn-mini-bar" id="btn-quick-capture">记一条</button>
+      </div>
+      <ul class="spine-list" id="list-spine"></ul>
+    </section>
+
+    <nav class="tile-grid" aria-label="按类型浏览">
       <a class="tile" href="#anniversaries" data-module="anniversaries">
         <span class="tile-badge" data-badge-for="anniversaries" hidden></span>
         <span class="tile-num">01</span>
@@ -280,6 +335,23 @@
         <span class="tile-name">和解</span>
       </a>
     </nav>
+  </div>
+
+  <!-- 记一条：选类型 -->
+  <div class="modal" id="modal-capture" hidden>
+    <div class="modal-backdrop" data-close-capture-modal></div>
+    <div class="modal-panel modal-panel--capture" role="dialog" aria-labelledby="modal-capture-title">
+      <h3 id="modal-capture-title">记一件重要的事</h3>
+      <p class="capture-hint">选一个类型，记下这段感情的节点</p>
+      <div class="capture-grid">
+        <button type="button" class="capture-option" data-capture="events">重要的事</button>
+        <button type="button" class="capture-option" data-capture="sweets">想对你说</button>
+        <button type="button" class="capture-option" data-capture="places">足迹</button>
+        <button type="button" class="capture-option" data-capture="fights">和解</button>
+        <button type="button" class="capture-option" data-capture="anniversaries">纪念日</button>
+      </div>
+      <button type="button" class="btn btn-ghost" data-close-capture-modal>取消</button>
+    </div>
   </div>
 
 
@@ -862,7 +934,7 @@
     })();
   </script>
   <!-- seed-data.js（约 400KB）改为按需加载，避免每次打开都卡住手机 -->
-  <script src="script.js?v=mobile-fast-v2"></script>
+  <script src="script.js?v=spine-mood-v1"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", function () {

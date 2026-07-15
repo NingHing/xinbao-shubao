@@ -21,6 +21,16 @@ document.addEventListener("DOMContentLoaded", function () {
     places: "足迹",
     fights: "和解"
   };
+  var MOOD_META = {
+    great: { label: "很好", mark: "◎" },
+    good: { label: "还行", mark: "○" },
+    ok: { label: "一般", mark: "·" },
+    tired: { label: "有点累", mark: "◌" },
+    low: { label: "不太好", mark: "✕" }
+  };
+  var MOOD_ORDER = ["great", "good", "ok", "tired", "low"];
+  var SPINE_LIMIT = 12;
+  var pendingCaptureType = "";
 
   var defaultData = {
     siteTitle: PRODUCT_NAME,
@@ -43,7 +53,8 @@ document.addEventListener("DOMContentLoaded", function () {
     events: [],
     sweets: [],
     places: [],
-    fights: []
+    fights: [],
+    checkins: []
   };
 
   var data = null;
@@ -256,7 +267,7 @@ document.addEventListener("DOMContentLoaded", function () {
       // 一旦标记删除就不再复活（同 id 不会因云端较新 updatedAt 被写回）
       return !stones[item.id];
     }
-    ["anniversaries", "events", "sweets", "places", "fights"].forEach(function (key) {
+    ["anniversaries", "events", "sweets", "places", "fights", "checkins"].forEach(function (key) {
       journal[key] = (journal[key] || []).filter(keepItem);
     });
     (journal.sweets || []).forEach(function (sweet) {
@@ -368,6 +379,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     out.tombstones = mergeTombstones(local.tombstones, remote.tombstones);
+    out.checkins = dedupeCheckins(out.checkins || []);
     return applyDurableDeletes(out);
   }
 
@@ -877,6 +889,14 @@ document.addEventListener("DOMContentLoaded", function () {
       markModuleSeen(name);
       // 子页按需渲染（尤其足迹含大图，启动时不预先画）
       renderList(name);
+      if (pendingCaptureType === name) {
+        pendingCaptureType = "";
+        requestAnimationFrame(function () {
+          openCaptureForType(name);
+        });
+      }
+    } else {
+      renderHomeExtras();
     }
     renderActivity();
 
@@ -1108,6 +1128,7 @@ document.addEventListener("DOMContentLoaded", function () {
       if (!parsed.tombstones || typeof parsed.tombstones !== "object") {
         parsed.tombstones = {};
       }
+      parsed.checkins = dedupeCheckins(parsed.checkins || []);
       return applyDurableDeletes(parsed);
     } catch (err) {
       return applyDurableDeletes(JSON.parse(JSON.stringify(defaultData)));
@@ -2378,6 +2399,325 @@ document.addEventListener("DOMContentLoaded", function () {
       .join("");
   }
 
+  function entryDateKey(item) {
+    if (!item) return "";
+    var raw =
+      item.dateStart ||
+      item.date ||
+      item.dateEnd ||
+      "";
+    return String(raw).trim().slice(0, 10);
+  }
+
+  function entrySortStamp(item) {
+    var raw =
+      (item && (item.dateStart || item.date || item.updatedAt)) || "";
+    var s = String(raw).trim().replace(" ", "T");
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) s += "T12:00:00";
+    var t = Date.parse(s);
+    return isNaN(t) ? 0 : t;
+  }
+
+  function spinePreview(type, item) {
+    if (!item) return "";
+    if (type === "sweets") {
+      return truncateText(item.note || item.title || "一句想说的话", 42);
+    }
+    if (type === "fights") {
+      return truncateText(item.title || item.note || "一次和解", 42);
+    }
+    return truncateText(item.title || item.note || MODULE_LABELS[type] || "", 42);
+  }
+
+  function collectSpineRows() {
+    var rows = [];
+    MODULE_KEYS.forEach(function (type) {
+      (data[type] || []).forEach(function (item) {
+        if (!item || !item.id) return;
+        var dateKey = entryDateKey(item);
+        if (!dateKey) return;
+        rows.push({
+          type: type,
+          id: item.id,
+          date: dateKey,
+          stamp: entrySortStamp(item),
+          title: spinePreview(type, item)
+        });
+      });
+    });
+    rows.sort(function (a, b) {
+      return b.stamp - a.stamp;
+    });
+    return rows;
+  }
+
+  function renderSpine() {
+    var listEl = document.getElementById("list-spine");
+    if (!listEl || !data) return;
+    var rows = collectSpineRows().slice(0, SPINE_LIMIT);
+    if (!rows.length) {
+      listEl.innerHTML =
+        '<li class="spine-empty">还没有主线节点。点右上角「记一条」，把重要的时刻留下来。</li>';
+      return;
+    }
+    listEl.innerHTML = rows
+      .map(function (row) {
+        return (
+          '<li class="spine-item" data-type="' +
+          escapeText(row.type) +
+          '">' +
+          '<a class="spine-link" href="#' +
+          escapeText(row.type) +
+          '">' +
+          '<div class="spine-meta">' +
+          '<span class="spine-type">' +
+          escapeText(MODULE_LABELS[row.type] || row.type) +
+          "</span>" +
+          '<span class="spine-date">' +
+          escapeText(row.date) +
+          "</span>" +
+          "</div>" +
+          '<p class="spine-name">' +
+          escapeText(row.title) +
+          "</p>" +
+          "</a>" +
+          "</li>"
+        );
+      })
+      .join("");
+  }
+
+  function findCheckin(role, dateStr) {
+    var list = (data && data.checkins) || [];
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].role === role && list[i].date === dateStr) return list[i];
+    }
+    return null;
+  }
+
+  function moodMark(mood) {
+    return (MOOD_META[mood] && MOOD_META[mood].mark) || "·";
+  }
+
+  function moodLabel(mood) {
+    return (MOOD_META[mood] && MOOD_META[mood].label) || "";
+  }
+
+  function fillMoodCard(prefix, nick, entry, emptyText) {
+    var whoEl = document.getElementById("mood-" + prefix + "-who");
+    var emojiEl = document.getElementById("mood-" + prefix + "-emoji");
+    var labelEl = document.getElementById("mood-" + prefix + "-label");
+    var noteEl = document.getElementById("mood-" + prefix + "-note");
+    if (whoEl) whoEl.textContent = nick || "";
+    if (!entry) {
+      if (emojiEl) emojiEl.textContent = "·";
+      if (labelEl) labelEl.textContent = emptyText || "今天还没写";
+      if (noteEl) {
+        noteEl.hidden = true;
+        noteEl.textContent = "";
+      }
+      return;
+    }
+    if (emojiEl) emojiEl.textContent = moodMark(entry.mood);
+    if (labelEl) labelEl.textContent = moodLabel(entry.mood) || "已记录";
+    if (noteEl) {
+      if (entry.note) {
+        noteEl.hidden = false;
+        noteEl.textContent = entry.note;
+      } else {
+        noteEl.hidden = true;
+        noteEl.textContent = "";
+      }
+    }
+  }
+
+  function renderMoodWeek() {
+    var weekEl = document.getElementById("mood-week");
+    if (!weekEl || !data) return;
+    var today = todayDate();
+    var html = [];
+    var dayNames = ["日", "一", "二", "三", "四", "五", "六"];
+    for (var i = 6; i >= 0; i--) {
+      var d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
+      var y = d.getFullYear();
+      var m = String(d.getMonth() + 1).padStart(2, "0");
+      var day = String(d.getDate()).padStart(2, "0");
+      var key = y + "-" + m + "-" + day;
+      var mine = findCheckin(getMyRole(), key);
+      var partnerRole = getMyRole() === "b" ? "a" : "b";
+      var partner = findCheckin(partnerRole, key);
+      var cls = "mood-dot";
+      if (mine && partner) cls += " is-both";
+      else if (mine || partner) cls += " is-me";
+      html.push(
+        "<li><div class=\"" +
+          cls +
+          "\" title=\"" +
+          escapeText(key) +
+          "\"></div>" +
+          dayNames[d.getDay()] +
+          "</li>"
+      );
+    }
+    weekEl.innerHTML = html.join("");
+  }
+
+  function renderMood() {
+    if (!data) return;
+    ensureNicknames();
+    var today = todayStr();
+    var myRole = getMyRole();
+    var partnerRole = myRole === "b" ? "a" : "b";
+    var mine = findCheckin(myRole, today);
+    var partner = findCheckin(partnerRole, today);
+    fillMoodCard("partner", getPartnerNick(), partner, "今天还没写");
+    fillMoodCard(
+      "mine",
+      getMyNick(),
+      mine,
+      "点一下记下今天"
+    );
+    document.querySelectorAll(".mood-chip").forEach(function (chip) {
+      var mood = chip.getAttribute("data-mood");
+      chip.classList.toggle("is-active", !!(mine && mine.mood === mood));
+    });
+    var noteForm = document.getElementById("mood-note-form");
+    var noteInput = document.getElementById("mood-note-input");
+    if (noteForm && noteInput) {
+      if (mine) {
+        noteForm.hidden = false;
+        if (document.activeElement !== noteInput) {
+          noteInput.value = mine.note || "";
+        }
+      } else {
+        noteForm.hidden = true;
+        noteInput.value = "";
+      }
+    }
+    renderMoodWeek();
+  }
+
+  function upsertTodayMood(mood, note) {
+    if (!data || !MOOD_META[mood]) return;
+    if (!Array.isArray(data.checkins)) data.checkins = [];
+    var today = todayStr();
+    var role = getMyRole();
+    var existing = findCheckin(role, today);
+    var nextNote =
+      note != null ? String(note).trim().slice(0, 40) : existing ? existing.note || "" : "";
+    if (existing) {
+      existing.mood = mood;
+      existing.note = nextNote;
+      existing.author = getMyNick();
+      existing.updatedAt = new Date().toISOString();
+    } else {
+      data.checkins.push({
+        id: uid(),
+        date: today,
+        role: role,
+        author: getMyNick(),
+        mood: mood,
+        note: nextNote,
+        updatedAt: new Date().toISOString()
+      });
+    }
+    saveData();
+    renderMood();
+    showToast("今日心情已记下");
+  }
+
+  function openCaptureModal() {
+    var modal = document.getElementById("modal-capture");
+    if (modal) modal.hidden = false;
+  }
+
+  function closeCaptureModal() {
+    var modal = document.getElementById("modal-capture");
+    if (modal) modal.hidden = true;
+  }
+
+  function openCaptureForType(type) {
+    if (type === "anniversaries") openAnniModal(null);
+    else if (type === "events") openEventModal(null);
+    else if (type === "sweets") openSweetModal(null);
+    else if (type === "places") openPlaceModal(null);
+    else if (type === "fights") openFightModal(null);
+  }
+
+  function startQuickCapture(type) {
+    closeCaptureModal();
+    if (!VALID_VIEWS[type] || type === "home") return;
+    pendingCaptureType = type;
+    goToHash(type);
+  }
+
+  var quickCaptureBtn = document.getElementById("btn-quick-capture");
+  if (quickCaptureBtn) {
+    quickCaptureBtn.addEventListener("click", function () {
+      openCaptureModal();
+    });
+  }
+  document.body.addEventListener("click", function (e) {
+    if (e.target.closest("[data-close-capture-modal]")) {
+      closeCaptureModal();
+      return;
+    }
+    var captureOpt = e.target.closest("[data-capture]");
+    if (captureOpt) {
+      startQuickCapture(captureOpt.getAttribute("data-capture"));
+      return;
+    }
+    var moodChip = e.target.closest(".mood-chip");
+    if (moodChip) {
+      var mood = moodChip.getAttribute("data-mood");
+      if (mood) upsertTodayMood(mood);
+    }
+  });
+  var moodNoteForm = document.getElementById("mood-note-form");
+  if (moodNoteForm) {
+    moodNoteForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var mine = findCheckin(getMyRole(), todayStr());
+      if (!mine) {
+        showToast("先点选一个心情");
+        return;
+      }
+      var input = document.getElementById("mood-note-input");
+      upsertTodayMood(mine.mood, input ? input.value : "");
+    });
+  }
+
+  function dedupeCheckins(list) {
+    var best = {};
+    (list || []).forEach(function (item) {
+      if (!item || !item.date) return;
+      var mood = String(item.mood || "").trim();
+      if (!MOOD_META[mood]) return;
+      var role = item.role === "b" ? "b" : "a";
+      var key = role + "::" + String(item.date).slice(0, 10);
+      var row = {
+        id: item.id || uid(),
+        date: String(item.date).slice(0, 10),
+        role: role,
+        author: item.author || "",
+        mood: mood,
+        note: String(item.note || "").slice(0, 40),
+        updatedAt: item.updatedAt || ""
+      };
+      var prev = best[key];
+      if (!prev) {
+        best[key] = row;
+        return;
+      }
+      var tNew = Date.parse(row.updatedAt || "") || 0;
+      var tOld = Date.parse(prev.updatedAt || "") || 0;
+      if (tNew >= tOld) best[key] = row;
+    });
+    return Object.keys(best).map(function (k) {
+      return best[k];
+    });
+  }
+
   function findItem(type, id) {
     var list = data[type] || [];
     for (var i = 0; i < list.length; i++) {
@@ -3324,19 +3664,23 @@ document.addEventListener("DOMContentLoaded", function () {
     var view = document.body.dataset.view || "home";
     // 首页启动：只画首页需要的块，避免足迹大图把手机主线程卡死
     if (options.homeOnly || (view === "home" && !options.forceAll)) {
-      renderReminders();
-      renderActivity();
+      renderHomeExtras();
       return;
     }
     if (view && view !== "home") {
       renderList(view);
-      renderReminders();
-      renderActivity();
+      renderHomeExtras();
       return;
     }
     ["anniversaries", "events", "sweets", "places", "fights"].forEach(renderList);
+    renderHomeExtras();
+  }
+
+  function renderHomeExtras() {
     renderReminders();
     renderActivity();
+    renderMood();
+    renderSpine();
   }
 
   function todayStr() {
@@ -4386,6 +4730,7 @@ document.addEventListener("DOMContentLoaded", function () {
         renderPlaces();
         clearDraft(draftSlot("places", editingId));
         closePlaceModal({ skipDraftSave: true });
+        renderSpine();
         showToast(isEdit ? "已更新足迹" : "已保存足迹");
         return;
       }
@@ -4509,6 +4854,8 @@ document.addEventListener("DOMContentLoaded", function () {
       noteLocalWrite(type);
       renderList(type);
       if (type === "anniversaries") renderReminders();
+      renderSpine();
+      renderActivity();
 
       if (type === "anniversaries") {
         clearDraft(draftSlot("anniversaries", editingId));
@@ -4670,6 +5017,7 @@ document.addEventListener("DOMContentLoaded", function () {
     noteLocalWrite(type);
     renderList(type);
     if (type === "anniversaries") renderReminders();
+    renderSpine();
     showToast("已删除");
     forcePushAfterDelete();
     if (window.XinbaoCloud && XinbaoCloud.canSync()) {

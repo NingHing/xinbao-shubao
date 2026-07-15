@@ -137,12 +137,24 @@ body.is-locked .gate {
 .view-home {
   width: min(900px, 94%);
   margin: 0 auto;
-  padding: 1.5rem 0 2rem;
+  padding: 1.5rem 0 2.5rem;
   min-height: 100vh;
   display: none;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   box-sizing: border-box;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .view-home.is-active:not([hidden]) {
@@ -645,6 +657,338 @@ body.is-locked .app-settings-btn {
   border: 1px solid rgba(95, 127, 154, 0.22);
   border-radius: 24px;
   animation: rise 0.8s ease 0.05s both;
+}
+
+/* ----- 今日心情（趣味附加） ----- */
+.home-mood {
+  width: 100%;
+  margin: 0 0 1.25rem;
+  padding: 0.95rem 1rem 0.9rem;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(95, 127, 154, 0.22);
+  border-radius: 24px;
+  animation: rise 0.75s ease both;
+}
+
+.mood-head {
+  text-align: center;
+  margin-bottom: 0.7rem;
+}
+
+.mood-kicker {
+  font-size: 0.65rem;
+  letter-spacing: 0.28em;
+  color: var(--gold);
+}
+
+.mood-title {
+  margin-top: 0.2rem;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--rose-deep);
+}
+
+.mood-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
+  margin-bottom: 0.75rem;
+}
+
+.mood-card {
+  padding: 0.7rem 0.65rem;
+  border-radius: 18px;
+  background: rgba(245, 249, 252, 0.9);
+  border: 1px solid rgba(95, 127, 154, 0.14);
+  text-align: center;
+}
+
+.mood-card.is-mine {
+  border-color: rgba(74, 103, 128, 0.28);
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.95), rgba(232, 239, 245, 0.92));
+}
+
+.mood-who {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.mood-emoji {
+  margin: 0.35rem 0 0.15rem;
+  font-size: 1.35rem;
+  line-height: 1;
+  color: var(--rose-deep);
+  font-family: var(--font-display);
+}
+
+.mood-label {
+  font-size: 0.88rem;
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.mood-note {
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.mood-picker {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem;
+  margin-bottom: 0.55rem;
+}
+
+.mood-chip {
+  border: 1px dashed rgba(95, 127, 154, 0.45);
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--rose-deep);
+  border-radius: 999px;
+  padding: 0.38rem 0.72rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.mood-chip:hover,
+.mood-chip:focus-visible {
+  background: rgba(232, 239, 245, 0.95);
+  border-color: rgba(74, 103, 128, 0.55);
+  outline: none;
+}
+
+.mood-chip.is-active {
+  background: rgba(74, 103, 128, 0.12);
+  border-style: solid;
+  border-color: rgba(74, 103, 128, 0.55);
+  transform: translateY(-1px);
+}
+
+.mood-note-form {
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+  margin-bottom: 0.55rem;
+}
+
+.mood-note-form[hidden] {
+  display: none !important;
+}
+
+.mood-note-label {
+  flex: 1;
+  margin: 0;
+}
+
+.mood-note-form input {
+  width: 100%;
+  border: 1px solid rgba(95, 127, 154, 0.28);
+  border-radius: 999px;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.85rem;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ink);
+}
+
+.mood-week {
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.25rem;
+  margin: 0.15rem 0 0;
+  padding: 0 0.15rem;
+}
+
+.mood-week li {
+  flex: 1;
+  text-align: center;
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.mood-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  margin: 0 auto 0.25rem;
+  border-radius: 50%;
+  border: 1px solid rgba(95, 127, 154, 0.35);
+  background: transparent;
+}
+
+.mood-dot.is-me {
+  background: rgba(74, 103, 128, 0.55);
+  border-color: transparent;
+}
+
+.mood-dot.is-both {
+  background: rgba(74, 103, 128, 0.85);
+  border-color: transparent;
+  box-shadow: 0 0 0 2px rgba(232, 239, 245, 0.9);
+}
+
+/* ----- 感情主线时间轴 ----- */
+.home-spine {
+  width: 100%;
+  margin: 0 0 1.35rem;
+  padding: 0.95rem 1rem 0.85rem;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(95, 127, 154, 0.22);
+  border-radius: 24px;
+  animation: rise 0.8s ease 0.08s both;
+}
+
+.spine-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.spine-kicker {
+  font-size: 0.65rem;
+  letter-spacing: 0.28em;
+  color: var(--gold);
+}
+
+.spine-title {
+  margin-top: 0.2rem;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--rose-deep);
+}
+
+.spine-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 0.35rem;
+  border-left: 1px solid rgba(95, 127, 154, 0.28);
+}
+
+.spine-item {
+  position: relative;
+  padding: 0 0 0.85rem 1rem;
+}
+
+.spine-item:last-child {
+  padding-bottom: 0.15rem;
+}
+
+.spine-item::before {
+  content: "";
+  position: absolute;
+  left: -0.28rem;
+  top: 0.35rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--rose-deep);
+  border: 2px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 0 1px rgba(95, 127, 154, 0.25);
+}
+
+.spine-item[data-type="anniversaries"]::before { background: #5f7f9a; }
+.spine-item[data-type="events"]::before { background: #4a6780; }
+.spine-item[data-type="sweets"]::before { background: #7a8fa3; }
+.spine-item[data-type="places"]::before { background: #6b8f71; }
+.spine-item[data-type="fights"]::before { background: #8a7a6b; }
+
+.spine-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  padding: 0.35rem 0.55rem;
+  border-radius: 14px;
+  transition: background 0.15s ease;
+}
+
+.spine-link:hover,
+.spine-link:focus-visible {
+  background: rgba(232, 239, 245, 0.85);
+  outline: none;
+}
+
+.spine-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.55rem;
+  margin-bottom: 0.15rem;
+}
+
+.spine-type {
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.spine-date {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.spine-name {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--ink);
+  line-height: 1.4;
+}
+
+.spine-empty {
+  padding: 0.55rem 0.35rem 0.35rem 1rem;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.modal-panel--capture {
+  text-align: center;
+}
+
+.capture-hint {
+  margin: 0.35rem 0 1rem;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.capture-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
+  margin-bottom: 0.85rem;
+}
+
+.capture-option {
+  border: 1px dashed rgba(95, 127, 154, 0.45);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--rose-deep);
+  border-radius: 16px;
+  padding: 0.85rem 0.5rem;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.capture-option:hover,
+.capture-option:focus-visible {
+  background: rgba(232, 239, 245, 0.95);
+  border-color: rgba(74, 103, 128, 0.55);
+  outline: none;
+}
+
+.capture-option:last-child {
+  grid-column: 1 / -1;
 }
 
 .reminders-head {
@@ -1877,6 +2221,20 @@ body.is-locked .app-settings-btn {
     justify-content: flex-start;
     padding-top: 1.25rem;
     min-height: auto;
+  }
+
+  .home-mood {
+    margin-bottom: 1.05rem;
+    padding: 0.85rem 0.85rem 0.8rem;
+  }
+
+  .mood-chip {
+    padding: 0.34rem 0.62rem;
+    font-size: 0.76rem;
+  }
+
+  .home-spine {
+    margin-bottom: 1.1rem;
   }
 
   .home-reminders {
