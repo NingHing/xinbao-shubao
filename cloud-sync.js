@@ -443,6 +443,35 @@ window.XinbaoCloud = (function () {
     }, delay);
   }
 
+  function withAuthTimeout(promise, ms) {
+    return new Promise(function (resolve, reject) {
+      var done = false;
+      var timer = setTimeout(function () {
+        if (done) return;
+        done = true;
+        reject(
+          new Error(
+            "连不上云端（超时）。请检查网络，或到 supabase.com 确认项目是否还在 / 是否被暂停"
+          )
+        );
+      }, ms || 12000);
+      Promise.resolve(promise).then(
+        function (value) {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          resolve(value);
+        },
+        function (err) {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          reject(err);
+        }
+      );
+    });
+  }
+
   function signIn(email, password) {
     var c = ensureClient();
     if (!c) {
@@ -450,13 +479,26 @@ window.XinbaoCloud = (function () {
         new Error("登录组件未加载成功，请刷新页面后重试")
       );
     }
-    return c.auth.signInWithPassword({ email: email, password: password }).then(function (res) {
-      if (res.error) throw new Error(friendlyAuthError(res.error.message));
-      user = res.data.user;
-      return loadPair().then(function () {
-        return user;
+    return withAuthTimeout(
+      c.auth.signInWithPassword({ email: email, password: password }),
+      12000
+    )
+      .then(function (res) {
+        if (res.error) throw new Error(friendlyAuthError(res.error.message));
+        user = res.data.user;
+        return loadPair().then(function () {
+          return user;
+        });
+      })
+      .catch(function (err) {
+        var msg = String((err && err.message) || err || "");
+        if (/Failed to fetch|NetworkError|Load failed|fetch/i.test(msg)) {
+          throw new Error(
+            "连不上云端。请确认 supabase 项目未暂停/未删除，或换个网络再试"
+          );
+        }
+        throw err instanceof Error ? err : new Error(msg || "登录失败");
       });
-    });
   }
 
   function signUp(email, password) {
