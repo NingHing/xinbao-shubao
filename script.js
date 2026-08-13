@@ -918,7 +918,41 @@ document.addEventListener("DOMContentLoaded", function () {
     showView(viewFromHash());
   });
 
+  var paperExpandTimer = null;
+
+  function prefersReducedMotion() {
+    return (
+      window.matchMedia &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    );
+  }
+
+  function openModuleFromPaper(paper, name) {
+    if (document.body.classList.contains("is-paper-expanding")) return;
+    if (prefersReducedMotion()) {
+      goToHash(name);
+      return;
+    }
+    document.body.classList.add("is-paper-expanding");
+    paper.classList.add("is-expanding");
+    if (paperExpandTimer) clearTimeout(paperExpandTimer);
+    paperExpandTimer = setTimeout(function () {
+      paper.classList.remove("is-expanding");
+      document.body.classList.remove("is-paper-expanding");
+      paperExpandTimer = null;
+      goToHash(name);
+    }, 400);
+  }
+
   document.body.addEventListener("click", function (e) {
+    var paper = e.target.closest("a.paper-sheet");
+    if (paper) {
+      var paperName = (paper.getAttribute("href") || "").replace(/^#/, "");
+      if (!VALID_VIEWS[paperName]) return;
+      e.preventDefault();
+      openModuleFromPaper(paper, paperName);
+      return;
+    }
     var link = e.target.closest('a[href^="#"]');
     if (!link) return;
     var name = link.getAttribute("href").replace(/^#/, "");
@@ -2343,7 +2377,7 @@ document.addEventListener("DOMContentLoaded", function () {
   function renderReminders() {
     var listEl = document.getElementById("list-reminders");
     if (!listEl) return;
-    var upcoming = getUpcomingReminders().slice(0, 4);
+    var upcoming = getUpcomingReminders().slice(0, 3);
 
     if (!upcoming.length) {
       listEl.innerHTML =
@@ -3001,59 +3035,78 @@ document.addEventListener("DOMContentLoaded", function () {
           ? " ～ " + escapeText(item.dateEnd)
           : "");
       var note = item.note
-        ? '<p class="entry-note">' + escapeText(item.note) + "</p>"
+        ? '<p class="place-card-note">' + escapeText(item.note) + "</p>"
         : "";
-      var costHtml =
-        '<p class="place-cost">花销：¥ ' + formatMoney(item.cost) + "</p>";
+      var costNum = Number(item.cost) || 0;
+      var costHtml = costNum
+        ? '<p class="place-card-price">¥ ' + formatMoney(costNum) + "</p>"
+        : "";
       var photos = Array.isArray(item.photos) ? item.photos : [];
-      var photosHtml = "";
-      if (photos.length) {
-        photosHtml =
-          '<div class="place-stack" data-place-id="' +
+      var cover = photos[0];
+      var photoHtml;
+      if (cover) {
+        var dots =
+          photos.length > 1
+            ? '<span class="place-card-dots" aria-hidden="true">' +
+              photos
+                .slice(0, 5)
+                .map(function (_src, i) {
+                  return '<i class="' + (i === 0 ? "is-on" : "") + '"></i>';
+                })
+                .join("") +
+              "</span>"
+            : "";
+        var countBadge =
+          photos.length > 1
+            ? '<span class="place-card-count">' + photos.length + " 张</span>"
+            : "";
+        photoHtml =
+          '<button type="button" class="place-card-photo place-stack-card" data-place-id="' +
           escapeText(item.id) +
-          '" aria-label="足迹照片' +
+          '" data-photo-index="0" aria-label="查看' +
+          escapeText(item.title || "足迹") +
+          "的照片，共" +
           photos.length +
           '张">' +
-          photos
-            .slice(0, 5)
-            .map(function (src, i) {
-              return (
-                '<button type="button" class="place-stack-card" style="--i:' +
-                i +
-                '" data-place-id="' +
-                escapeText(item.id) +
-                '" data-photo-index="' +
-                i +
-                '" aria-label="查看照片' +
-                (i + 1) +
-                '">' +
-                '<img src="' +
-                src +
-                '" alt="" class="place-photo-thumb" loading="lazy" decoding="async" />' +
-                "</button>"
-              );
-            })
-            .join("") +
-          (photos.length > 1
-            ? '<span class="place-stack-count">' + photos.length + "</span>"
-            : "") +
-          "</div>";
+          '<img src="' +
+          cover +
+          '" alt="" class="place-photo-thumb" loading="lazy" decoding="async" />' +
+          countBadge +
+          dots +
+          "</button>";
+      } else {
+        photoHtml =
+          '<button type="button" class="place-card-photo place-card-photo--empty" data-edit-place-photos="' +
+          escapeText(item.id) +
+          '" aria-label="为' +
+          escapeText(item.title || "这条足迹") +
+          '添加照片">' +
+          '<svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6">' +
+          '<rect x="3" y="5" width="18" height="14" rx="2" />' +
+          '<circle cx="8.5" cy="10" r="1.4" />' +
+          '<path d="M21 16l-5.2-5.2a1.5 1.5 0 0 0-2.1 0L6 18" stroke-linecap="round" stroke-linejoin="round" />' +
+          "</svg>" +
+          '<span>添加照片</span>' +
+          "</button>";
       }
 
+      var subParts = [];
+      if (range) subParts.push(range);
+      var subHtml = subParts.length
+        ? '<p class="place-card-sub">' + subParts.join(" · ") + "</p>"
+        : "";
+
       return (
-        '<li class="entry-item entry-item--place">' +
-        '<div class="place-main">' +
-        '<div class="entry-top">' +
-        '<p class="entry-title">' +
+        '<li class="place-card">' +
+        photoHtml +
+        '<div class="place-card-meta">' +
+        '<p class="place-card-title">' +
         escapeText(item.title || "（未命名地点）") +
         "</p>" +
-        '<p class="place-range">' +
-        range +
-        "</p>" +
-        "</div>" +
-        costHtml +
+        subHtml +
         note +
-        '<div class="entry-actions">' +
+        costHtml +
+        '<div class="place-card-actions">' +
         editButtonHtml("places", item.id) +
         '<button type="button" class="btn-mini" data-edit-place-photos="' +
         escapeText(item.id) +
@@ -3065,7 +3118,6 @@ document.addEventListener("DOMContentLoaded", function () {
         '">删除</button>' +
         "</div>" +
         "</div>" +
-        photosHtml +
         "</li>"
       );
     }).join("");
@@ -3338,9 +3390,79 @@ document.addEventListener("DOMContentLoaded", function () {
     renderHomeExtras();
   }
 
+  function latestItem(list) {
+    var best = null;
+    var bestStamp = -1;
+    (list || []).forEach(function (item) {
+      var stamp = itemStamp(item);
+      if (stamp >= bestStamp) {
+        bestStamp = stamp;
+        best = item;
+      }
+    });
+    return best;
+  }
+
+  function paperPreviewText(module) {
+    if (!data) return "翻开这一页";
+    var list = data[module] || [];
+    var n = list.length;
+
+    if (module === "anniversaries") {
+      var upcoming = getUpcomingReminders();
+      if (upcoming[0]) {
+        return (
+          upcoming[0].title +
+          " · " +
+          yearlyCountdownMain(upcoming[0].daysLeft)
+        );
+      }
+      return n ? "已记 " + n + " 个日子" : "还没有纪念日";
+    }
+
+    if (module === "events") {
+      var ev = latestItem(list);
+      if (ev) return truncateText(ev.title || "重要的事", 22);
+      return "还没有重要的事";
+    }
+
+    if (module === "sweets") {
+      var sweet = latestItem(list);
+      if (sweet) {
+        var who = sweet.author ? sweet.author + "：" : "";
+        return truncateText(who + (sweet.note || "写了一段话"), 24);
+      }
+      return "写一句给对方";
+    }
+
+    if (module === "places") {
+      var place = latestItem(list);
+      if (place) return truncateText(place.title || "足迹", 22);
+      return "还没有足迹";
+    }
+
+    if (module === "fights") {
+      var fight = latestItem(list);
+      if (fight) return truncateText(fight.title || fight.note || "一次和解", 22);
+      return "把和解也留下";
+    }
+
+    return n ? "已记 " + n + " 条" : "翻开这一页";
+  }
+
+  function renderPaperPreviews() {
+    MODULE_KEYS.forEach(function (module) {
+      var el = document.querySelector(
+        '[data-paper-preview="' + module + '"]'
+      );
+      if (el) el.textContent = paperPreviewText(module);
+    });
+  }
+
   function renderHomeExtras() {
     renderReminders();
     renderActivity();
+    renderPaperPreviews();
   }
 
   function todayStr() {

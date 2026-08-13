@@ -1,0 +1,17 @@
+---
+description: 写 UI 前读 DESIGN.md。版式跟 Airbnb，颜色锁并记纸色板。
+globs: "**/*.html,**/*.css,**/*.js"
+alwaysApply: false
+---
+
+# 并记视觉规则
+
+改任何可见界面前，先读项目根目录 `DESIGN.md`。
+
+- 版式：照片优先、大圆角、字重克制、主色稀缺（Airbnb 空间语言）
+- 颜色：只用 `styles.css` `:root` 和 `DESIGN.md` 里的纸色。主色 `#3D5A5B`
+- 字体：宋体标题 + 系统黑体正文。禁止 Google Fonts
+- 禁止：Airbnb Rausch `#FF385C`、Bélo、Cereal、纯白大画布、深色 OLED、玻璃拟态
+- 拿不准时查 `DESIGN.md`，不要发明新色值
+
+模块对应：足迹 = 照片卡；纪念日/想对你说 = 上图下文条目；首页入口 = 圆形标签，不是仪表盘磁贴。
