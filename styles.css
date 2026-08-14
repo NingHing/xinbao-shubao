@@ -79,7 +79,15 @@ body > * {
   }
 }
 
-/* ----- 暗号门 ----- */
+/* ----- 暗号门：整页是门，只留一张安静的条 ----- */
+body.is-locked {
+  background: #d5d1c9;
+}
+
+body.is-locked::before {
+  opacity: 0;
+}
+
 body.is-locked .view,
 body.is-locked .lightbox {
   display: none !important;
@@ -88,90 +96,297 @@ body.is-locked .lightbox {
 .gate {
   display: none;
   min-height: 100vh;
-  align-items: center;
-  justify-content: center;
-  padding: 1.5rem;
+  min-height: 100dvh;
+  font-family: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", sans-serif;
+  color: #1a1a1a;
 }
 
 body.is-locked .gate {
   display: flex;
-  animation: fade-in 0.4s ease both;
+  align-items: stretch;
+  justify-content: center;
+  background: #ebe6dc;
 }
 
-.gate-card {
-  width: min(380px, 100%);
+.gate-stage {
+  position: relative;
+  width: min(430px, 100%);
+  height: var(--vvh, 100dvh);
+  overflow: hidden;
+  background: #f4f1ea;
+}
+
+.gate-scene {
+  position: relative;
+  height: 100%;
+}
+
+.gate-art-clip {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #f4f1ea;
+  transition:
+    opacity 0.7s ease,
+    transform 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.gate[data-step="login"] .gate-art-clip {
+  opacity: 0;
+  transform: translate3d(0, -6%, 0);
+  pointer-events: none;
+}
+
+.gate-art-img {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 72%;
+  pointer-events: none;
+  user-select: none;
+}
+
+.gate-mark {
+  position: absolute;
+  left: 50%;
+  bottom: 18%;
+  z-index: 2;
+  margin: 0;
+  transform: translateX(-50%);
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-size: 1.45rem;
+  font-weight: 500;
+  letter-spacing: 0.42em;
+  line-height: 1;
+  color: #1a1a1a;
+  pointer-events: none;
+  transition: opacity 0.45s ease, transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.gate-tap-hint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: max(1.4rem, env(safe-area-inset-bottom));
+  z-index: 2;
+  margin: 0;
+  color: rgba(26, 26, 26, 0.42);
+  font-size: 0.82rem;
+  letter-spacing: 0.18em;
   text-align: center;
-  padding: 2.4rem 1.7rem 1.9rem;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-soft);
-  /* 卡片内再叠一层更细的纸感 */
-  background-image:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.35), transparent 40%),
-    var(--grain);
-  background-size: auto, 140px 140px;
-  background-blend-mode: normal, soft-light;
+  pointer-events: none;
+  transition: opacity 0.35s ease;
 }
 
-.gate-kicker {
-  font-size: 0.72rem;
-  letter-spacing: 0.28em;
-  color: var(--gold);
-  margin-bottom: 0.65rem;
+.gate-open {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
 }
 
-.gate-title {
-  font-family: var(--font-display);
-  font-size: 2rem;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  color: var(--ink);
+.gate-login {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  background: #f7f4e8;
+  opacity: 0;
+  transform: translate3d(0, 4%, 0);
+  pointer-events: none;
+  transition:
+    opacity 0.7s ease 0.05s,
+    transform 0.85s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.gate-hint {
-  margin-top: 0.55rem;
-  margin-bottom: 1.4rem;
-  font-size: 0.9rem;
-  color: var(--muted);
+.gate[data-step="login"] .gate-login {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+  pointer-events: auto;
+}
+
+.gate-login-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center center;
+  pointer-events: none;
+  user-select: none;
+}
+
+.gate-hotspots {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
 }
 
 .gate-form {
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
-  text-align: left;
+  margin: 0;
 }
 
-.gate-label {
-  font-size: 0.82rem;
-  color: var(--muted);
+.hot-email,
+.hot-pass,
+.hot-submit,
+.hot-register,
+.hot-error,
+.gate-checking {
+  position: absolute;
+  box-sizing: border-box;
 }
 
-.gate-input {
-  width: 100%;
-  padding: 0.75rem 0.9rem;
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  background: #fff;
-  color: var(--ink);
-  font-size: 1rem;
+.hot-email {
+  top: 56.1%;
+  left: 17.6%;
+  width: 63.3%;
+  height: 5.4%;
+}
+
+.hot-pass {
+  top: 65.4%;
+  left: 17.6%;
+  width: 63.3%;
+  height: 6.4%;
+  padding-left: 22%;
+}
+
+.hot-submit {
+  top: 76.2%;
+  left: 17.6%;
+  width: 63.3%;
+  height: 5.5%;
+}
+
+.hot-register {
+  top: 86.8%;
+  left: 20%;
+  width: 60%;
+  height: 4.6%;
+}
+
+.hot-error {
+  top: 72.4%;
+  left: 18%;
+  width: 64%;
+}
+
+.gate-checking {
+  top: 62%;
+  left: 18%;
+  width: 64%;
+  margin: 0;
+  font-size: 0.92rem;
+  color: #6d675e;
+  text-align: center;
+}
+
+.gate-checking[hidden] {
+  display: none;
+}
+
+.gate-input,
+.gate-btn,
+.gate-switch {
+  margin: 0;
+  padding: 0 0.9em;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+  color: #2a2723;
   font-family: inherit;
+  font-size: clamp(14px, 3.6vw, 17px);
+}
+
+.hot-pass {
+  padding-left: 22%;
+}
+
+.gate-input::placeholder {
+  color: transparent;
 }
 
 .gate-input:focus {
-  outline: 2px solid rgba(95, 127, 154, 0.35);
-  border-color: var(--rose);
+  outline: none;
+  background: transparent;
+}
+
+.hot-email:not(:placeholder-shown) {
+  background: #f7f4e8;
+}
+
+.hot-pass:not(:placeholder-shown) {
+  background: linear-gradient(to right, transparent 22%, #f7f4e8 22%);
+}
+
+.gate-input:focus-visible,
+.gate-btn:focus-visible,
+.gate-switch:focus-visible {
+  outline: 2px solid rgba(42, 39, 35, 0.35);
+  outline-offset: 2px;
+}
+
+.gate-btn,
+.gate-switch {
+  color: transparent;
+  cursor: pointer;
 }
 
 .gate-error {
+  margin: 0;
   font-size: 0.82rem;
-  color: var(--rose-deep);
+  color: #7a3d38;
+  text-align: center;
+  pointer-events: none;
 }
 
-.gate-btn {
-  margin-top: 0.35rem;
-  width: 100%;
+.gate[data-auth="signup"] .hot-submit,
+.gate[data-auth="signup"] .hot-register {
+  color: #2a2723;
+  background: #f7f4e8;
+}
+
+.gate[data-auth="signup"] .hot-register {
+  color: #6a645c;
+}
+
+.gate[data-step="login"] .gate-mark,
+.gate[data-step="login"] .gate-tap-hint {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.gate[data-step="login"] .gate-open {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gate-art-clip,
+  .gate-login,
+  .gate-mark,
+  .gate-tap-hint {
+    transition-duration: 0.01ms;
+  }
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .view { display: none; }
@@ -804,17 +1019,6 @@ body.is-locked .app-settings-btn {
 
 .sync-status.is-error {
   color: #a33b2b;
-}
-
-.gate-actions {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.gate-actions .gate-btn {
-  flex: 1;
-  min-width: 6.5rem;
 }
 
 .linkish {

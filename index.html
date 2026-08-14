@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=overlays-content" />
   <meta name="theme-color" content="#D4C8B4" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -15,15 +15,11 @@
   <link rel="dns-prefetch" href="https://uimlnuksqdyihtfxzdmu.supabase.co" />
   <link rel="preconnect" href="https://uimlnuksqdyihtfxzdmu.supabase.co" crossorigin />
   <!-- 不用谷歌字体：国内手机经常被拖慢；系统字体立刻出字 -->
-  <link rel="stylesheet" href="styles.css?v=places-photo-v1" />
+  <link rel="stylesheet" href="styles.css?v=gate-cover-v12" />
   <style>
-    /* 门禁关键样式：不等 styles.css 也能先看到标题 */
-    body.is-locked { margin: 0; background: #D8CFC0; }
+    body.is-locked { margin: 0; background: #f4f1ea; }
     body.is-locked .view, body.is-locked .lightbox { display: none !important; }
-    .gate { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem; }
-    .gate-card { width: min(100%, 22rem); text-align: center; }
-    .gate-title { font-family: "Songti SC", "STSong", serif; font-size: 2rem; margin: 0.35rem 0 1rem; color: #2C2620; }
-    .gate-kicker, .gate-hint { color: #7A7064; font-size: 0.92rem; }
+    .gate { min-height: 100vh; }
   </style>
 </head>
 <body class="is-locked" data-view="home">
@@ -178,46 +174,63 @@
     </aside>
   </div>
 
-  <!-- ========== 门禁：云端登录（有配置时）或本地暗号 ========== -->
-  <div id="gate" class="gate" role="dialog" aria-labelledby="gate-title" aria-modal="true">
-    <div class="gate-card">
-      <p class="gate-kicker">二人一本</p>
-      <h1 id="gate-title" class="gate-title">并记</h1>
-
-      <p id="gate-checking" class="gate-hint">正在检查登录状态…</p>
-
-      <!-- 云端登录 -->
-      <div id="gate-cloud" hidden>
-        <p class="gate-hint">请用你们的账号登录后进入（仅二人可见）</p>
-        <form id="cloud-auth-form" class="gate-form" autocomplete="on">
-          <label class="gate-label" for="cloud-email">邮箱</label>
-          <input id="cloud-email" class="gate-input" type="email" required placeholder="you@example.com" />
-          <label class="gate-label" for="cloud-password">密码</label>
-          <input id="cloud-password" class="gate-input" type="password" required minlength="6" placeholder="至少 6 位" />
-          <p id="cloud-auth-error" class="gate-error" hidden></p>
-          <div class="gate-actions">
-            <button type="submit" class="btn gate-btn" id="cloud-login-btn">登录</button>
-          </div>
-        </form>
-        <p class="gate-hint" style="margin-top:0.85rem;margin-bottom:0">没有账号？请让对方在设置里告知，或由管理员在后台创建。</p>
-      </div>
-
-      <!-- 本地暗号：仅在未配置云端时作为备用 -->
-      <div id="gate-local" hidden>
-        <p class="gate-hint">输入暗号后进入（本机模式，不与云端同步）</p>
-        <form id="gate-form" class="gate-form" autocomplete="off">
-          <label class="gate-label" for="gate-password">暗号</label>
-          <input
-            id="gate-password"
-            class="gate-input"
-            type="password"
-            name="password"
-            required
-            placeholder="请输入暗号"
+  <!-- ========== 门禁：先封面，轻触后再登录 ========== -->
+  <div id="gate" class="gate" data-step="cover" role="dialog" aria-labelledby="gate-title" aria-modal="true">
+    <div class="gate-stage">
+      <div class="gate-scene">
+        <div class="gate-art-clip" role="img" aria-label="两人在分叉的路上牵手">
+          <img
+            class="gate-art-img"
+            src="images/gate-cover.png"
+            alt=""
+            width="1728"
+            height="2304"
           />
-          <p id="gate-error" class="gate-error" hidden>暗号不对，再试一次</p>
-          <button type="button" id="gate-btn" class="btn gate-btn">进入</button>
-        </form>
+        </div>
+        <h1 id="gate-title" class="gate-mark">并记</h1>
+        <p class="gate-tap-hint">轻触进入</p>
+        <button type="button" id="gate-open" class="gate-open" aria-label="打开登录页"></button>
+
+        <div class="gate-login">
+          <img
+            class="gate-login-img"
+            src="images/gate-login.jpg"
+            alt=""
+            width="1280"
+            height="1707"
+          />
+          <div class="gate-hotspots">
+            <p id="gate-checking" class="gate-checking" hidden>等一下…</p>
+
+            <div id="gate-cloud" hidden>
+              <form id="cloud-auth-form" class="gate-form" autocomplete="on">
+                <label class="visually-hidden" for="cloud-email">邮箱</label>
+                <input id="cloud-email" class="gate-input hot-email" type="email" required placeholder="" autocomplete="username" />
+                <label class="visually-hidden" for="cloud-password">密码</label>
+                <input id="cloud-password" class="gate-input hot-pass" type="password" required minlength="6" placeholder="" autocomplete="current-password" />
+                <p id="cloud-auth-error" class="gate-error hot-error" hidden></p>
+                <button type="submit" class="gate-btn hot-submit" id="cloud-login-btn">登录</button>
+                <button type="button" id="gate-switch-auth" class="gate-switch hot-register">还没有账号？前往注册</button>
+              </form>
+            </div>
+
+            <div id="gate-local" hidden>
+              <form id="gate-form" class="gate-form" autocomplete="off">
+                <label class="visually-hidden" for="gate-password">暗号</label>
+                <input
+                  id="gate-password"
+                  class="gate-input hot-pass"
+                  type="password"
+                  name="password"
+                  required
+                  placeholder=""
+                />
+                <p id="gate-error" class="gate-error hot-error" hidden>不对。再想一次。</p>
+                <button type="button" id="gate-btn" class="gate-btn hot-submit">进</button>
+              </form>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -693,6 +706,62 @@
         }
       }
 
+      var gateEl = document.getElementById("gate");
+      var gateStage = document.querySelector(".gate-stage");
+      var gateLoginImg = document.querySelector(".gate-login-img");
+      var gateHotspots = document.querySelector(".gate-hotspots");
+
+      function layoutLoginHotspots() {
+        if (!gateLoginImg || !gateHotspots) return;
+        if (!gateEl || gateEl.getAttribute("data-step") !== "login") return;
+        var nw = gateLoginImg.naturalWidth || 1280;
+        var nh = gateLoginImg.naturalHeight || 1707;
+        var rw = gateLoginImg.clientWidth;
+        var rh = gateLoginImg.clientHeight;
+        if (!rw || !rh) return;
+        var scale = Math.min(rw / nw, rh / nh);
+        var dw = nw * scale;
+        var dh = nh * scale;
+        gateHotspots.style.left = (rw - dw) / 2 + "px";
+        gateHotspots.style.top = (rh - dh) / 2 + "px";
+        gateHotspots.style.width = dw + "px";
+        gateHotspots.style.height = dh + "px";
+      }
+
+      function syncGateViewport() {
+        var vv = window.visualViewport;
+        var viewH = vv && vv.height ? vv.height : window.innerHeight;
+        var offset = vv && vv.offsetTop ? vv.offsetTop : 0;
+        var keyboard = window.innerHeight - viewH > 80;
+        document.documentElement.style.setProperty("--vvh", viewH + "px");
+        if (gateStage) {
+          gateStage.style.height = viewH + "px";
+          gateStage.style.transform = offset ? "translateY(" + offset + "px)" : "";
+        }
+        if (gateEl) {
+          if (keyboard) gateEl.classList.add("is-keyboard");
+          else gateEl.classList.remove("is-keyboard");
+        }
+        layoutLoginHotspots();
+      }
+
+      function showCover() {
+        if (gateEl) {
+          gateEl.setAttribute("data-step", "cover");
+          gateEl.classList.remove("is-keyboard");
+        }
+        syncGateViewport();
+      }
+
+      function openLogin() {
+        if (gateEl) gateEl.setAttribute("data-step", "login");
+        showGateMode();
+        requestAnimationFrame(function () {
+          layoutLoginHotspots();
+          requestAnimationFrame(layoutLoginHotspots);
+        });
+      }
+
       function relock() {
         document.body.classList.add("is-locked");
         var gate = document.getElementById("gate");
@@ -700,6 +769,7 @@
           gate.hidden = false;
           gate.style.display = "";
         }
+        showCover();
         var settingsBtn = document.getElementById("btn-open-settings");
         if (settingsBtn) settingsBtn.hidden = true;
       }
@@ -770,8 +840,8 @@
       }
 
       function enterIfPossible() {
+        showCover();
         if (cloudReady()) {
-          // 先不要乐观解锁：避免会话异常时卡在怪状态；仍缩短等待
           setChecking(true);
           if (gateCloud) gateCloud.hidden = true;
           if (gateLocal) gateLocal.hidden = true;
@@ -780,21 +850,41 @@
               if (user) unlock();
               else {
                 clearRememberedUnlock();
-                showGateMode();
+                setChecking(false);
+                showCover();
               }
             })
             .catch(function () {
               clearRememberedUnlock();
-              showGateMode();
+              setChecking(false);
+              showCover();
             });
           return;
         }
         setChecking(false);
         if (hasRememberedUnlock()) unlock();
-        else showGateMode();
+        else showCover();
       }
 
       enterIfPossible();
+
+      syncGateViewport();
+      window.addEventListener("resize", syncGateViewport);
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener("resize", syncGateViewport);
+        window.visualViewport.addEventListener("scroll", syncGateViewport);
+      }
+
+      if (gateLoginImg) {
+        gateLoginImg.addEventListener("load", layoutLoginHotspots);
+      }
+
+      var gateOpen = document.getElementById("gate-open");
+      if (gateOpen) {
+        gateOpen.addEventListener("click", function () {
+          openLogin();
+        });
+      }
 
       var form = document.getElementById("gate-form");
       var input = document.getElementById("gate-password");
@@ -833,6 +923,26 @@
 
       var cloudForm = document.getElementById("cloud-auth-form");
       var cloudLoginBtn = document.getElementById("cloud-login-btn");
+      var cloudSwitch = document.getElementById("gate-switch-auth");
+      var cloudAuthMode = "signin";
+
+      function setCloudAuthMode(mode) {
+        cloudAuthMode = mode === "signup" ? "signup" : "signin";
+        if (gateEl) gateEl.setAttribute("data-auth", cloudAuthMode);
+        if (cloudLoginBtn) cloudLoginBtn.textContent = cloudAuthMode === "signup" ? "注册" : "登录";
+        if (cloudSwitch) {
+          cloudSwitch.textContent =
+            cloudAuthMode === "signup" ? "已有账号？去登录" : "还没有账号？前往注册";
+        }
+      }
+
+      if (cloudSwitch) {
+        cloudSwitch.addEventListener("click", function () {
+          showCloudError("");
+          setCloudAuthMode(cloudAuthMode === "signup" ? "signin" : "signup");
+        });
+      }
+
       if (cloudForm) {
         cloudForm.addEventListener("submit", function (e) {
           e.preventDefault();
@@ -847,21 +957,27 @@
           }
           var email = document.getElementById("cloud-email").value.trim();
           var password = document.getElementById("cloud-password").value;
+          var submitting = cloudAuthMode === "signup" ? "注册中…" : "登录中…";
+          var idle = cloudAuthMode === "signup" ? "注册" : "登录";
           if (cloudLoginBtn) {
             cloudLoginBtn.disabled = true;
-            cloudLoginBtn.textContent = "登录中…";
+            cloudLoginBtn.textContent = submitting;
           }
-          XinbaoCloud.signIn(email, password)
+          var action =
+            cloudAuthMode === "signup"
+              ? XinbaoCloud.signUp(email, password)
+              : XinbaoCloud.signIn(email, password);
+          action
             .then(function () {
               unlock();
             })
             .catch(function (err) {
-              showCloudError((err && err.message) || "登录失败");
+              showCloudError((err && err.message) || (cloudAuthMode === "signup" ? "注册失败" : "登录失败"));
             })
             .then(function () {
               if (cloudLoginBtn) {
                 cloudLoginBtn.disabled = false;
-                cloudLoginBtn.textContent = "登录";
+                cloudLoginBtn.textContent = idle;
               }
             });
         });
