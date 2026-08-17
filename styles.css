@@ -123,18 +123,17 @@ body.is-locked .gate {
 
 .gate-art-clip {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   overflow: hidden;
   background: #f4f1ea;
-  transition:
-    opacity 0.7s ease,
-    transform 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: bottom 0.9s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .gate[data-step="login"] .gate-art-clip {
-  opacity: 0;
-  transform: translate3d(0, -6%, 0);
-  pointer-events: none;
+  bottom: var(--sheet-h, 42%);
 }
 
 .gate-art-img {
@@ -142,11 +141,17 @@ body.is-locked .gate {
   left: 0;
   top: 0;
   width: 100%;
-  height: 100%;
+  height: var(--vvh, 100dvh);
   object-fit: cover;
   object-position: 50% 72%;
+  transform: translate3d(0, 0, 0);
+  transition: transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
   pointer-events: none;
   user-select: none;
+}
+
+.gate[data-step="login"] .gate-art-img {
+  transform: translate3d(0, calc(var(--sheet-h, 42%) * -0.38), 0);
 }
 
 .gate-mark {
@@ -192,97 +197,68 @@ body.is-locked .gate {
   cursor: pointer;
 }
 
-.gate-login {
+.gate-sheet {
   position: absolute;
-  inset: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 4;
-  background: #f7f4e8;
-  opacity: 0;
-  transform: translate3d(0, 4%, 0);
+  padding: 0 1.05rem max(1.1rem, env(safe-area-inset-bottom));
+  background: transparent;
+  transform: translate3d(0, 100%, 0);
   pointer-events: none;
-  transition:
-    opacity 0.7s ease 0.05s,
-    transform 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.gate[data-step="login"] .gate-login {
-  opacity: 1;
+.gate[data-step="login"] .gate-sheet {
   transform: translate3d(0, 0, 0);
   pointer-events: auto;
 }
 
-.gate-login-img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  object-position: center center;
-  pointer-events: none;
-  user-select: none;
-}
-
-.gate-hotspots {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
+.gate-card {
+  position: relative;
+  padding: 1.35rem 1.15rem 1.05rem;
+  background: #fbf8f0;
+  border: 2.4px solid #2a2723;
+  border-radius: 1.85rem;
+  box-shadow: 6px 8px 0 rgba(42, 39, 35, 0.08);
 }
 
 .gate-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.72rem;
   margin: 0;
 }
 
-.hot-email,
-.hot-pass,
-.hot-submit,
-.hot-register,
-.hot-error,
-.gate-checking {
+.gate-pass-wrap {
+  position: relative;
+}
+
+.gate-pass-note {
   position: absolute;
-  box-sizing: border-box;
+  left: -0.08rem;
+  top: 50%;
+  z-index: 2;
+  transform: translateY(-54%) rotate(-3.5deg);
+  padding: 0.26rem 0.48rem 0.3rem;
+  background: #faf6ee;
+  border: 1.6px solid #2a2723;
+  color: #2a2723;
+  font-family: "Songti SC", "STSong", "Noto Serif SC", serif;
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  box-shadow: 2px 3px 0 rgba(42, 39, 35, 0.08);
+  pointer-events: none;
 }
 
-.hot-email {
-  top: 56.1%;
-  left: 17.6%;
-  width: 63.3%;
-  height: 5.4%;
-}
-
-.hot-pass {
-  top: 65.4%;
-  left: 17.6%;
-  width: 63.3%;
-  height: 6.4%;
-  padding-left: 22%;
-}
-
-.hot-submit {
-  top: 76.2%;
-  left: 17.6%;
-  width: 63.3%;
-  height: 5.5%;
-}
-
-.hot-register {
-  top: 86.8%;
-  left: 20%;
-  width: 60%;
-  height: 4.6%;
-}
-
-.hot-error {
-  top: 72.4%;
-  left: 18%;
-  width: 64%;
+.gate-pass-wrap .gate-input {
+  padding-left: 3.35rem;
 }
 
 .gate-checking {
-  top: 62%;
-  left: 18%;
-  width: 64%;
-  margin: 0;
+  margin: 0 0 0.7rem;
   font-size: 0.92rem;
   color: #6d675e;
   text-align: center;
@@ -293,38 +269,36 @@ body.is-locked .gate {
 }
 
 .gate-input,
-.gate-btn,
-.gate-switch {
+.gate-btn {
+  width: 100%;
   margin: 0;
-  padding: 0 0.9em;
-  border: 0;
+  padding: 0.78rem 1.05rem;
+  border: 1.9px solid #2a2723;
   border-radius: 999px;
-  background: transparent;
+  background: #fbf8f0;
   box-shadow: none;
   color: #2a2723;
   font-family: inherit;
-  font-size: clamp(14px, 3.6vw, 17px);
-}
-
-.hot-pass {
-  padding-left: 22%;
+  font-size: 1rem;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .gate-input::placeholder {
-  color: transparent;
+  color: #8a847a;
 }
 
 .gate-input:focus {
   outline: none;
-  background: transparent;
+  background: #fffdf7;
 }
 
-.hot-email:not(:placeholder-shown) {
-  background: #f7f4e8;
-}
-
-.hot-pass:not(:placeholder-shown) {
-  background: linear-gradient(to right, transparent 22%, #f7f4e8 22%);
+.gate-input:-webkit-autofill,
+.gate-input:-webkit-autofill:hover,
+.gate-input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #2a2723;
+  box-shadow: 0 0 0 1000px #fbf8f0 inset;
+  transition: background-color 9999s ease-out;
 }
 
 .gate-input:focus-visible,
@@ -334,9 +308,21 @@ body.is-locked .gate {
   outline-offset: 2px;
 }
 
-.gate-btn,
+.gate-btn {
+  cursor: pointer;
+  font-weight: 500;
+}
+
 .gate-switch {
-  color: transparent;
+  width: 100%;
+  margin: 0.15rem 0 0;
+  padding: 0.35rem 0.2rem;
+  border: 0;
+  background: transparent;
+  color: #5f5a53;
+  font-family: inherit;
+  font-size: 0.88rem;
+  text-align: center;
   cursor: pointer;
 }
 
@@ -345,17 +331,6 @@ body.is-locked .gate {
   font-size: 0.82rem;
   color: #7a3d38;
   text-align: center;
-  pointer-events: none;
-}
-
-.gate[data-auth="signup"] .hot-submit,
-.gate[data-auth="signup"] .hot-register {
-  color: #2a2723;
-  background: #f7f4e8;
-}
-
-.gate[data-auth="signup"] .hot-register {
-  color: #6a645c;
 }
 
 .gate[data-step="login"] .gate-mark,
@@ -370,7 +345,8 @@ body.is-locked .gate {
 
 @media (prefers-reduced-motion: reduce) {
   .gate-art-clip,
-  .gate-login,
+  .gate-art-img,
+  .gate-sheet,
   .gate-mark,
   .gate-tap-hint {
     transition-duration: 0.01ms;

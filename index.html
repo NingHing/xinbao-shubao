@@ -15,7 +15,7 @@
   <link rel="dns-prefetch" href="https://uimlnuksqdyihtfxzdmu.supabase.co" />
   <link rel="preconnect" href="https://uimlnuksqdyihtfxzdmu.supabase.co" crossorigin />
   <!-- 不用谷歌字体：国内手机经常被拖慢；系统字体立刻出字 -->
-  <link rel="stylesheet" href="styles.css?v=gate-cover-v13" />
+  <link rel="stylesheet" href="styles.css?v=gate-cover-v14" />
   <style>
     body.is-locked { margin: 0; background: #f4f1ea; }
     body.is-locked .view, body.is-locked .lightbox { display: none !important; }
@@ -191,42 +191,41 @@
         <p class="gate-tap-hint">轻触进入</p>
         <button type="button" id="gate-open" class="gate-open" aria-label="打开登录页"></button>
 
-        <div class="gate-login">
-          <img
-            class="gate-login-img"
-            src="images/gate-login.jpg"
-            alt=""
-            width="1280"
-            height="1707"
-          />
-          <div class="gate-hotspots">
+        <div class="gate-sheet">
+          <div class="gate-card">
             <p id="gate-checking" class="gate-checking" hidden>等一下…</p>
 
             <div id="gate-cloud" hidden>
               <form id="cloud-auth-form" class="gate-form" autocomplete="on">
                 <label class="visually-hidden" for="cloud-email">邮箱</label>
-                <input id="cloud-email" class="gate-input hot-email" type="email" required placeholder="" autocomplete="username" />
+                <input id="cloud-email" class="gate-input" type="email" required placeholder="邮箱 / Email" autocomplete="username" />
                 <label class="visually-hidden" for="cloud-password">密码</label>
-                <input id="cloud-password" class="gate-input hot-pass" type="password" required minlength="6" placeholder="" autocomplete="current-password" />
-                <p id="cloud-auth-error" class="gate-error hot-error" hidden></p>
-                <button type="submit" class="gate-btn hot-submit" id="cloud-login-btn">登录</button>
-                <button type="button" id="gate-switch-auth" class="gate-switch hot-register">还没有账号？前往注册</button>
+                <div class="gate-pass-wrap">
+                  <span class="gate-pass-note" aria-hidden="true">密码</span>
+                  <input id="cloud-password" class="gate-input" type="password" required minlength="6" placeholder="Password" autocomplete="current-password" />
+                </div>
+                <p id="cloud-auth-error" class="gate-error" hidden></p>
+                <button type="submit" class="gate-btn" id="cloud-login-btn">登录</button>
+                <button type="button" id="gate-switch-auth" class="gate-switch">还没有账号？前往注册</button>
               </form>
             </div>
 
             <div id="gate-local" hidden>
               <form id="gate-form" class="gate-form" autocomplete="off">
                 <label class="visually-hidden" for="gate-password">暗号</label>
-                <input
-                  id="gate-password"
-                  class="gate-input hot-pass"
-                  type="password"
-                  name="password"
-                  required
-                  placeholder=""
-                />
-                <p id="gate-error" class="gate-error hot-error" hidden>不对。再想一次。</p>
-                <button type="button" id="gate-btn" class="gate-btn hot-submit">进</button>
+                <div class="gate-pass-wrap">
+                  <span class="gate-pass-note" aria-hidden="true">暗号</span>
+                  <input
+                    id="gate-password"
+                    class="gate-input"
+                    type="password"
+                    name="password"
+                    required
+                    placeholder="请输入"
+                  />
+                </div>
+                <p id="gate-error" class="gate-error" hidden>不对。再想一次。</p>
+                <button type="button" id="gate-btn" class="gate-btn">进</button>
               </form>
             </div>
           </div>
@@ -708,24 +707,12 @@
 
       var gateEl = document.getElementById("gate");
       var gateStage = document.querySelector(".gate-stage");
-      var gateLoginImg = document.querySelector(".gate-login-img");
-      var gateHotspots = document.querySelector(".gate-hotspots");
+      var gateSheet = document.querySelector(".gate-sheet");
 
-      function layoutLoginHotspots() {
-        if (!gateLoginImg || !gateHotspots) return;
-        if (!gateEl || gateEl.getAttribute("data-step") !== "login") return;
-        var nw = gateLoginImg.naturalWidth || 1280;
-        var nh = gateLoginImg.naturalHeight || 1707;
-        var rw = gateLoginImg.clientWidth;
-        var rh = gateLoginImg.clientHeight;
-        if (!rw || !rh) return;
-        var scale = Math.min(rw / nw, rh / nh);
-        var dw = nw * scale;
-        var dh = nh * scale;
-        gateHotspots.style.left = (rw - dw) / 2 + "px";
-        gateHotspots.style.top = (rh - dh) / 2 + "px";
-        gateHotspots.style.width = dw + "px";
-        gateHotspots.style.height = dh + "px";
+      function layoutGateSheet() {
+        if (!gateEl || !gateSheet) return;
+        if (gateEl.getAttribute("data-step") !== "login") return;
+        gateEl.style.setProperty("--sheet-h", gateSheet.offsetHeight + "px");
       }
 
       function syncGateViewport() {
@@ -742,7 +729,7 @@
           if (keyboard) gateEl.classList.add("is-keyboard");
           else gateEl.classList.remove("is-keyboard");
         }
-        layoutLoginHotspots();
+        layoutGateSheet();
       }
 
       function showCover() {
@@ -757,8 +744,8 @@
         if (gateEl) gateEl.setAttribute("data-step", "login");
         showGateMode();
         requestAnimationFrame(function () {
-          layoutLoginHotspots();
-          requestAnimationFrame(layoutLoginHotspots);
+          layoutGateSheet();
+          requestAnimationFrame(layoutGateSheet);
         });
       }
 
@@ -873,10 +860,6 @@
       if (window.visualViewport) {
         window.visualViewport.addEventListener("resize", syncGateViewport);
         window.visualViewport.addEventListener("scroll", syncGateViewport);
-      }
-
-      if (gateLoginImg) {
-        gateLoginImg.addEventListener("load", layoutLoginHotspots);
       }
 
       var gateOpen = document.getElementById("gate-open");
