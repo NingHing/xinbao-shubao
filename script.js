@@ -929,7 +929,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function openModuleFromPaper(paper, name) {
     if (document.body.classList.contains("is-paper-expanding")) return;
-    if (prefersReducedMotion()) {
+    var isNarrow =
+      window.matchMedia && window.matchMedia("(max-width: 640px)").matches;
+    // 手机上几乎立刻进章，避免「点了半天还在动」
+    if (prefersReducedMotion() || isNarrow) {
       goToHash(name);
       return;
     }
@@ -941,7 +944,7 @@ document.addEventListener("DOMContentLoaded", function () {
       document.body.classList.remove("is-paper-expanding");
       paperExpandTimer = null;
       goToHash(name);
-    }, 400);
+    }, 280);
   }
 
   document.body.addEventListener("click", function (e) {

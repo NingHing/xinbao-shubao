@@ -15,7 +15,8 @@
   <link rel="dns-prefetch" href="https://uimlnuksqdyihtfxzdmu.supabase.co" />
   <link rel="preconnect" href="https://uimlnuksqdyihtfxzdmu.supabase.co" crossorigin />
   <!-- 不用谷歌字体：国内手机经常被拖慢；系统字体立刻出字 -->
-  <link rel="stylesheet" href="styles.css?v=gate-cover-v14" />
+  <link rel="preload" as="image" href="images/gate-cover.jpg?v=baseline-v1" fetchpriority="high" />
+  <link rel="stylesheet" href="styles.css?v=gate-cover-fast-v1" />
   <style>
     body.is-locked { margin: 0; background: #f4f1ea; }
     body.is-locked .view, body.is-locked .lightbox { display: none !important; }
@@ -181,10 +182,12 @@
         <div class="gate-art-clip" role="img" aria-label="两人在分叉的路上牵手">
           <img
             class="gate-art-img"
-            src="images/gate-cover.jpg"
+            src="images/gate-cover.jpg?v=baseline-v1"
             alt=""
             width="1024"
             height="1536"
+            fetchpriority="high"
+            decoding="sync"
           />
         </div>
         <h1 id="gate-title" class="gate-mark">并记</h1>
@@ -711,7 +714,7 @@
 
       function layoutGateSheet() {
         if (!gateEl || !gateSheet) return;
-        if (gateEl.getAttribute("data-step") !== "login") return;
+        // 封面态也先量好高度，点开时动画立刻对准，不再等两帧
         gateEl.style.setProperty("--sheet-h", gateSheet.offsetHeight + "px");
       }
 
@@ -741,12 +744,10 @@
       }
 
       function openLogin() {
+        layoutGateSheet();
         if (gateEl) gateEl.setAttribute("data-step", "login");
         showGateMode();
-        requestAnimationFrame(function () {
-          layoutGateSheet();
-          requestAnimationFrame(layoutGateSheet);
-        });
+        requestAnimationFrame(layoutGateSheet);
       }
 
       function relock() {
@@ -968,7 +969,7 @@
     })();
   </script>
   <!-- seed-data.js（约 400KB）改为按需加载，避免每次打开都卡住手机 -->
-  <script src="script.js?v=places-photo-v1"></script>
+  <script src="script.js?v=gate-cover-fast-v1"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", function () {

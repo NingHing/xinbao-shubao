@@ -123,17 +123,17 @@ body.is-locked .gate {
 
 .gate-art-clip {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   overflow: hidden;
   background: #f4f1ea;
-  transition: bottom 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+  /* 用 clip-path，避免改 bottom 触发整页重排（手机更卡） */
+  clip-path: inset(0 0 0 0);
+  transition: clip-path 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: clip-path;
 }
 
 .gate[data-step="login"] .gate-art-clip {
-  bottom: var(--sheet-h, 42%);
+  clip-path: inset(0 0 var(--sheet-h, 42%) 0);
 }
 
 .gate-art-img {
@@ -145,9 +145,10 @@ body.is-locked .gate {
   object-fit: cover;
   object-position: 50% 72%;
   transform: translate3d(0, 0, 0);
-  transition: transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
   pointer-events: none;
   user-select: none;
+  will-change: transform;
 }
 
 .gate[data-step="login"] .gate-art-img {
@@ -169,7 +170,7 @@ body.is-locked .gate {
   line-height: 1;
   color: #1a1a1a;
   pointer-events: none;
-  transition: opacity 0.45s ease, transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: opacity 0.18s ease;
 }
 
 .gate-tap-hint {
@@ -184,7 +185,7 @@ body.is-locked .gate {
   letter-spacing: 0.18em;
   text-align: center;
   pointer-events: none;
-  transition: opacity 0.35s ease;
+  transition: opacity 0.15s ease;
 }
 
 .gate-open {
@@ -207,7 +208,8 @@ body.is-locked .gate {
   background: transparent;
   transform: translate3d(0, 100%, 0);
   pointer-events: none;
-  transition: transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
 }
 
 .gate[data-step="login"] .gate-sheet {
@@ -349,7 +351,16 @@ body.is-locked .gate {
   .gate-sheet,
   .gate-mark,
   .gate-tap-hint {
-    transition-duration: 0.01ms;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* 窄屏再快一点，少拖泥带水 */
+@media (max-width: 640px) {
+  .gate-art-clip,
+  .gate-art-img,
+  .gate-sheet {
+    transition-duration: 0.22s;
   }
 }
 
